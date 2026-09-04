@@ -1,0 +1,7260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Blu - Virtual Village</title>
+
+<style>
+*{box-sizing:border-box}
+
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#87ceeb;
+    font-family:Arial,Segoe UI,sans-serif;
+}
+
+canvas{
+    display:block;
+}
+
+#chat{
+    position:fixed;
+    z-index:20;
+    right:18px;
+    top:18px;
+    bottom:18px;
+    width:350px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    border-radius:20px;
+    /* Keep the scene visible through the panel; message bubbles stay opaque. */
+    background:rgba(10,20,35,.35);
+    backdrop-filter:none;
+    box-shadow:0 10px 40px rgba(0,0,0,.45);
+    color:white;
+}
+
+#title{
+    padding:16px;
+    text-align:center;
+    font-size:21px;
+    font-weight:bold;
+    background:linear-gradient(90deg,#2878d8,#7650c7);
+}
+
+#status{
+    padding:8px;
+    text-align:center;
+    color:#bcd7ff;
+    font-size:12px;
+}
+
+#msgs{
+    flex:1;
+    overflow-y:auto;
+    padding:12px;
+}
+
+.msg{
+    padding:10px 13px;
+    margin:7px 0;
+    border-radius:15px;
+    max-width:86%;
+    line-height:1.4;
+    font-size:14px;
+}
+
+.user{
+    margin-left:auto;
+    background:rgba(39,104,173,.98);
+}
+
+.blu{
+    background:rgba(80,60,126,.98);
+}
+
+#emotion{
+    position:fixed;
+    z-index:20;
+    left:18px;
+    top:18px;
+    padding:10px 15px;
+    border-radius:14px;
+    background:rgba(10,20,35,.7);
+    color:white;
+    font-size:14px;
+}
+
+#hint{
+    position:fixed;
+    z-index:20;
+    left:18px;
+    bottom:18px;
+    padding:10px 14px;
+    border-radius:12px;
+    background:rgba(10,20,35,.7);
+    color:#e0ecff;
+    font-size:12px;
+}
+
+#features{
+    position:fixed;
+    z-index:20;
+    left:18px;
+    bottom:55px;
+    display:flex;
+    gap:4px;
+}
+
+.badge{
+    padding:3px 8px;
+    border-radius:8px;
+    font-size:10px;
+    background:rgba(10,20,35,.7);
+    color:#bcd7ff;
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.badge.active{
+    background:rgba(76,175,80,.2);
+    color:#81c784;
+    border-color:rgba(76,175,80,.3);
+}
+
+.badge.fallback{
+    background:rgba(255,152,0,.2);
+    color:#ffb74d;
+    border-color:rgba(255,152,0,.3);
+}
+
+#bar{
+    display:flex;
+    gap:8px;
+    padding:10px;
+}
+
+#input{
+    flex:1;
+    min-width:0;
+    padding:11px;
+    border-radius:12px;
+    border:1px solid #6397dd;
+    outline:none;
+    background:rgba(255,255,255,.1);
+    color:white;
+}
+
+#input::placeholder{
+    color:#aec5e3;
+}
+
+#send{
+    border:0;
+    border-radius:12px;
+    padding:0 17px;
+    background:#347bd3;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+#voice{
+    border:1px solid #6397dd;
+    border-radius:12px;
+    padding:0 10px;
+    background:rgba(255,255,255,.1);
+    color:#dbeaff;
+    font-size:11px;
+    font-weight:bold;
+    cursor:pointer;
+    white-space:nowrap;
+}
+
+#voice[aria-pressed="false"]{
+    opacity:.58;
+}
+
+#error{
+    display:none;
+    position:fixed;
+    z-index:50;
+    left:18px;
+    top:65px;
+    max-width:600px;
+    padding:12px;
+    border-radius:12px;
+    background:#8b2020;
+    color:white;
+    font-size:12px;
+    animation:slideIn .3s ease;
+}
+
+@keyframes slideIn{
+    from{opacity:0;transform:translateY(-10px)}
+    to{opacity:1;transform:translateY(0)}
+}
+
+@keyframes pulse{
+    0%,100%{opacity:1}
+    50%{opacity:.6}
+}
+
+@keyframes breathe{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(1.05)}
+}
+
+#emotion{
+    animation:breathe 2s infinite ease-in-out;
+}
+
+#loading{
+    position:fixed;
+    z-index:30;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    color:white;
+    background:rgba(0,0,0,.7);
+    padding:18px 25px;
+    border-radius:15px;
+    font-size:16px;
+}
+
+.status-dot{
+    display:inline-block;
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    margin-right:4px;
+    animation:pulse 1.5s infinite;
+}
+
+.status-dot.online{
+    background:#4caf50;
+}
+
+.status-dot.offline{
+    background:#ff9800;
+}
+</style>
+</head>
+
+<body>
+
+<div id="loading">
+    <div style="font-size:40px;margin-bottom:10px">ðŸŒ¿</div>
+    <span id="loading-title">Starting Blu...</span>
+    <div id="loading-detail" style="font-size:12px;margin-top:8px;color:#aec5e3">
+        Blu is waking up in his world
+    </div>
+</div>
+
+<div id="emotion">ðŸŒ¿ Blu is arriving in the village...</div>
+
+<div id="error"></div>
+
+<div id="features">
+    <span class="badge" id="badge-anim">ðŸŽ¬ Anim</span>
+    <span class="badge" id="badge-fallback">ðŸ›  Fallback</span>
+    <span class="badge" id="badge-ai">ðŸ¤– AI</span>
+</div>
+
+<div id="hint">
+Talk to Blu â€” try
+<b>Hello</b>,
+<b>come here</b>,
+<b>follow me</b>,
+<b>go for a walk</b>,
+<b>run</b>,
+<b>laugh</b>,
+<b>I'm sad</b>,
+<b>I'm angry</b>
+</div>
+
+<div id="chat">
+
+<div id="title">ðŸ‘¨ Blu</div>
+
+<div id="status">
+    <span class="status-dot offline" id="aistatus"></span>
+    Starting Bluâ€¦
+</div>
+
+<div id="msgs"></div>
+
+<div id="bar">
+
+<input
+id="input"
+autocomplete="off"
+placeholder="Talk to Blu..."
+>
+
+<button id="send">Send</button>
+
+<button id="voice" type="button" aria-pressed="true" title="Turn Blu's voice on or off">Voice on</button>
+
+</div>
+</div>
+
+
+<script type="importmap">
+{
+    "imports":{
+        "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
+
+
+<script type="module">
+
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+import {GLTFLoader}
+from
+"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+
+import {FBXLoader}
+from
+"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/FBXLoader.js";
+
+import {TGALoader}
+from
+"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/TGALoader.js";
+
+
+/* =========================================================
+   SCENE
+========================================================= */
+
+const scene =
+new THREE.Scene();
+
+scene.background =
+new THREE.Color(0x87ceeb);
+
+
+/* =========================================================
+   CAMERA
+========================================================= */
+
+const camera =
+new THREE.PerspectiveCamera(
+    50,
+    innerWidth / innerHeight,
+    0.01,
+    2000
+);
+
+camera.position.set(
+    0,
+    4,
+    14
+);
+
+
+/* =========================================================
+   RENDERER
+========================================================= */
+
+const renderer =
+new THREE.WebGLRenderer({
+    antialias:true,
+    powerPreference:"high-performance"
+});
+
+renderer.setSize(
+    innerWidth,
+    innerHeight
+);
+
+renderer.setPixelRatio(
+    Math.min(devicePixelRatio,2)
+);
+
+renderer.shadowMap.enabled=true;
+
+renderer.shadowMap.type=
+THREE.PCFSoftShadowMap;
+
+renderer.outputColorSpace=
+THREE.SRGBColorSpace;
+
+renderer.toneMapping=
+THREE.ACESFilmicToneMapping;
+
+renderer.toneMappingExposure=1.15;
+
+document.body.appendChild(
+    renderer.domElement
+);
+
+
+/* =========================================================
+   LIGHT
+========================================================= */
+
+const sun =
+new THREE.DirectionalLight(
+    0xffffff,
+    3
+);
+
+sun.position.set(
+    30,
+    60,
+    20
+);
+
+sun.castShadow=true;
+
+sun.shadow.mapSize.set(
+    2048,
+    2048
+);
+
+scene.add(sun);
+
+scene.add(
+    new THREE.HemisphereLight(
+        0xffffff,
+        0x665544,
+        2
+    )
+);
+
+
+/* =========================================================
+   BACKUP GROUND
+========================================================= */
+
+const backupGround =
+new THREE.Mesh(
+    new THREE.PlaneGeometry(
+        300,
+        300
+    ),
+    new THREE.MeshStandardMaterial({
+        color:0x70a85a,
+        roughness:1
+    })
+);
+
+backupGround.rotation.x=
+-Math.PI/2;
+
+backupGround.position.y=-0.05;
+
+backupGround.receiveShadow=true;
+
+scene.add(
+    backupGround
+);
+
+
+/* =========================================================
+   VARIABLES
+========================================================= */
+
+const loader =
+new GLTFLoader();
+
+const fbxLoader =
+new FBXLoader();
+
+const tgaLoader=
+new TGALoader();
+
+let world=null;
+
+let bluModel=null;
+
+let bluRoot=null;
+
+let mixer=null;
+
+let actions={};
+
+let activeAction=null;
+
+let expressiveArmRestAction=null;
+
+let usingRocketbox=false;
+let nativeMotionReady=false;
+let pendingAnimationType=null;
+
+let bluReady=false;
+
+let worldReady=false;
+
+let target=null;
+
+let path=[];
+
+let pathIndex=0;
+
+let movementSpeed=1.5;
+
+let manualControl=false;
+
+let actionLocked=false;
+
+let lifeTimer=0;
+
+let activityTimer=0;
+
+let currentActivity="idle";
+
+
+/* =========================================================
+   AI / OLLAMA
+========================================================= */
+
+const OLLAMA_URL=
+"http://localhost:11434/api/chat";
+
+const AI_MODEL=
+"llama3.2";
+
+let aiAvailable=false;
+
+let aiChecking=false;
+
+
+/* =========================================================
+   ADVANCED EMOTION STATE
+========================================================= */
+
+let currentEmotionType="neutral";
+
+let currentEmotionIntensity=0;
+
+let targetEmotionType="neutral";
+
+let targetEmotionIntensity=0;
+
+let emotionLerpSpeed=3.5;
+
+let lastEmotionChange=0;
+
+
+/* =========================================================
+   WORK SYSTEM
+========================================================= */
+
+const WORK_TYPES=[
+
+    {
+        name:"farming",
+        emoji:"ðŸŒ¾",
+        label:"farming the fields",
+        duration:8,
+        anim:"work"
+    },
+
+    {
+        name:"building",
+        emoji:"ðŸ”¨",
+        label:"building a fence",
+        duration:10,
+        anim:"work"
+    },
+
+    {
+        name:"gathering",
+        emoji:"ðŸ§º",
+        label:"gathering supplies",
+        duration:6,
+        anim:"walk"
+    },
+
+    {
+        name:"fishing",
+        emoji:"ðŸŽ£",
+        label:"fishing by the pond",
+        duration:9,
+        anim:"idle"
+    },
+
+    {
+        name:"cooking",
+        emoji:"ðŸ³",
+        label:"cooking a meal",
+        duration:7,
+        anim:"idle"
+    }
+
+];
+
+let currentWork=null;
+
+let workTimer=0;
+
+let workPhase=0;
+
+let isWorking=false;
+
+
+/* =========================================================
+   SPEECH / TYPING
+========================================================= */
+
+let typingTimer=0;
+
+let typingBuffer="";
+
+let typingIndex=0;
+
+let isTyping=false;
+
+let speechQueue=[];
+
+/*
+ * Conversation state is kept separate from the movement actions.  This
+ * prevents a random village activity from interrupting a sentence halfway
+ * through and gives the face one reliable source of speech timing.
+ */
+let isConversing=false;
+let voiceEnabled=true;
+let userHasInteracted=false;
+let speechSequence=0;
+let activeSpeechText="";
+let speechCharIndex=0;
+let speechStartedAt=0;
+let speechEstimatedMs=0;
+let speechVoicePlaying=false;
+let jawOpenAmount=0;
+let activeTypingCancel=null;
+
+
+/* =========================================================
+   NAVIGATION GRID
+========================================================= */
+
+/* A 3.2m grid gives Blu ample room to route around a village while allowing
+   the outdoor map to be ready in seconds instead of keeping him stationary. */
+const NAV_CELL=3.2;
+
+const NAV_SIZE=32;
+
+const NAV_HALF=NAV_SIZE/2;
+
+let navGrid=[];
+
+let navMinX=-NAV_HALF;
+
+let navMinZ=-NAV_HALF;
+
+let navCols=Math.ceil(
+    NAV_SIZE/NAV_CELL
+);
+
+let navRows=Math.ceil(
+    NAV_SIZE/NAV_CELL
+);
+
+const horizontalRaycaster=
+new THREE.Raycaster();
+
+const verticalRaycaster=
+new THREE.Raycaster();
+
+const horizontalDirections=[
+    new THREE.Vector3(1,0,0),
+    new THREE.Vector3(-1,0,0),
+    new THREE.Vector3(0,0,1),
+    new THREE.Vector3(0,0,-1)
+];
+
+let navigationMeshes=[];
+
+/* Meshes that can sit between the camera and Blu.  They are faded only while
+   obstructing the view and return to their original material opacity after. */
+let cameraOccluders=[];
+const cameraOcclusionRaycaster=new THREE.Raycaster();
+
+let navigationReady=false;
+
+let navigationStats={candidates:0,openSky:0,clear:0};
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+
+function updateLoadingState(){
+    const loading=document.getElementById("loading");
+    /* Blu is usable before the full village navigation map is ready. */
+    if(bluReady){
+        loading.style.display="none";
+    }
+}
+
+function updateLoadProgress(label,detail,event){
+    document.getElementById("loading-title").textContent=label;
+    const loaded=event?.loaded||0;
+    const total=event?.total||0;
+    const percent=total?` ${Math.round((loaded/total)*100)}%`:"";
+    document.getElementById("loading-detail").textContent=detail+percent;
+}
+
+function showError(text){
+
+    const e=
+    document.getElementById(
+        "error"
+    );
+
+    e.textContent=text;
+
+    e.style.display="block";
+}
+
+
+/* =========================================================
+   FEATURE STATUS BADGES
+========================================================= */
+
+function updateFeatureBadges(){
+
+    const animBadge=
+    document.getElementById(
+        "badge-anim"
+    );
+
+    const fallbackBadge=
+    document.getElementById(
+        "badge-fallback"
+    );
+
+    const aiBadge=
+    document.getElementById(
+        "badge-ai"
+    );
+
+    /*
+     * Animation status.
+     */
+
+    if(
+        Object.keys(actions).length>0
+    ){
+
+        animBadge.textContent=
+        "ðŸŽ¬ Real Animations";
+
+        animBadge.className=
+        "badge active";
+
+    }
+
+    else if(window.__bluMesh){
+
+        animBadge.textContent=
+        "ðŸ›  Procedural";
+
+        animBadge.className=
+        "badge fallback";
+
+    }
+
+    else{
+
+        animBadge.textContent=
+        "ðŸŽ¬ Procedural";
+
+        animBadge.className=
+        "badge fallback";
+
+    }
+
+    /*
+     * Fallback status.
+     */
+
+    if(window.__bluMesh){
+
+        fallbackBadge.textContent=
+        "ðŸ”· Scratch-built";
+
+        fallbackBadge.className=
+        "badge fallback";
+
+    }
+
+    else{
+
+        fallbackBadge.textContent=
+        "ðŸŽ¨ GLB Model";
+
+        fallbackBadge.className=
+        "badge active";
+
+    }
+
+    /*
+     * AI status.
+     */
+
+    if(aiAvailable){
+
+        aiBadge.textContent=
+        "ðŸ¤– AI Online";
+
+        aiBadge.className=
+        "badge active";
+
+    }
+
+    else{
+
+        aiBadge.textContent=
+        "ðŸ’¬ Keywords";
+
+        aiBadge.className=
+        "badge";
+
+    }
+
+}
+
+
+/* =========================================================
+   AI / OLLAMA
+========================================================= */
+
+async function checkOllama(){
+
+    aiChecking=true;
+
+    const status=
+    document.getElementById(
+        "status"
+    );
+
+    let dot=
+    document.getElementById(
+        "aistatus"
+    );
+
+    /* Never replace #status with textContent: doing that removes its status
+       dot and makes a later health-check crash. */
+    if(!dot){
+        dot=document.createElement("span");
+        dot.id="aistatus";
+    }
+    const setStatusText=text=>{
+        status.replaceChildren(dot,document.createTextNode(text));
+    };
+
+    setStatusText("Checking for AIâ€¦");
+
+    try{
+
+        const res=
+        await fetch(
+            OLLAMA_URL,
+            {
+                method:"POST",
+                headers:
+                {"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    model:AI_MODEL,
+                    messages:[
+                        {role:"user",content:"ping"}
+                    ],
+                    stream:false
+                }),
+                signal:AbortSignal
+                .timeout(5000)
+            }
+        );
+
+        if(res.ok){
+
+            aiAvailable=true;
+
+            dot.className=
+            "status-dot online";
+
+            setStatusText("ðŸ¤– AI ready");
+
+            console.log(
+                "Ollama AI connected!"
+            );
+
+        }
+
+        else{
+
+            aiAvailable=false;
+
+            dot.className=
+            "status-dot offline";
+
+            setStatusText("AI unavailable, using keywords");
+
+        }
+
+    }
+
+    catch(e){
+
+        aiAvailable=false;
+
+        dot.className=
+        "status-dot offline";
+
+        setStatusText("AI unavailable, using keywords");
+
+        console.log(
+            "Ollama unavailable, using keyword fallback"
+        );
+
+    }
+
+    finally{
+        aiChecking=false;
+
+        updateFeatureBadges();
+    }
+
+}
+
+
+async function callOllama(
+    userMessage,
+    history
+){
+
+    if(!aiAvailable){
+        return null;
+    }
+
+    const systemPrompt=
+    `You are Blu, a friendly human living in a peaceful village.
+    You have emotions and react physically to the user.
+
+    CRITICAL: Always respond in ONE of these JSON formats:
+
+    1. Happy: {"emotion":"happy","intensity":0.5-1.0,"action":"laugh|wave|dance|talk|happy","reply":"your message with emotion emoji"}
+    2. Sad: {"emotion":"sad","intensity":0.3-1.0,"action":"cry|talk|sad","reply":"your message with emotion emoji"}
+    3. Angry: {"emotion":"angry","intensity":0.3-1.0,"action":"angry|talk","reply":"your message with emotion emoji"}
+    4. Surprised: {"emotion":"surprised","intensity":0.3-1.0,"action":"surprise|talk","reply":"your message with emotion emoji"}
+    5. Laugh: {"emotion":"laugh","intensity":0.3-1.0,"action":"laugh|dance","reply":"your message with laughter emoji"}
+    6. Neutral/Talk: {"emotion":"talk","intensity":0.3-0.7,"action":"talk|idle","reply":"your message"}
+
+    Choose ONE emotion per response. Match the emotion to what you're saying.
+    If user shares happy news â†’ happy. If they say something sad â†’ sad.
+    Use intensity 0.3 for mild, 0.7 for strong, 1.0 for extreme.
+    Respond as a village human. Keep replies 1-2 sentences.
+    Be warm, expressive, and use simple ASCII emoticons such as :) or :D.`;
+
+    try{
+
+        /*
+         * History contains completed turns only.  The new user message must
+         * always be appended; previously an empty (but truthy) history array
+         * caused Ollama to receive only the system prompt.
+         */
+        const messages=[
+            {role:"system",content:systemPrompt},
+            ...(history||[]),
+            {role:"user",content:userMessage}
+        ];
+
+        const res=
+        await fetch(
+            OLLAMA_URL,
+            {
+                method:"POST",
+                headers:
+                {"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    model:AI_MODEL,
+                    messages,
+                    stream:false,
+                    format:"json"
+                }),
+                signal:AbortSignal
+                .timeout(10000)
+            }
+        );
+
+        if(!res.ok){
+            return null;
+        }
+
+        const data=
+        await res.json();
+
+        const content=
+        data.message?.content;
+
+        if(!content){
+            return null;
+        }
+
+        try{
+
+            const parsed=
+            JSON.parse(content);
+
+            if(
+                parsed.emotion &&
+                parsed.reply
+            ){
+
+                return parsed;
+
+            }
+
+        }
+
+        catch(e){}
+
+        /*
+         * Try to extract JSON from text.
+         */
+
+        const match=
+        content.match(
+            /\{[\s\S]*?"emotion"[\s\S]*?\}/
+        );
+
+        if(match){
+
+            try{
+
+                return JSON.parse(
+                    match[0]
+                );
+
+            }
+
+            catch(e){}
+
+        }
+
+        /*
+         * Fallback: return plain response.
+         */
+
+        return {
+            emotion:"talk",
+            intensity:.5,
+            action:"talk",
+            reply:content
+        };
+
+    }
+
+    catch(e){
+        console.error(
+            "Ollama error:",
+            e
+        );
+        return null;
+    }
+
+}
+
+
+function loadGLTFCandidates(paths, onLoad, onProgress, onError){
+    let index=0;
+    let lastError=null;
+    const tryNext=()=>{
+        if(index>=paths.length){
+            if(onError) onError(lastError || new Error("Could not load any candidate GLB file."));
+            return;
+        }
+        const url=paths[index++];
+        const isFbx=/\.fbx(?:$|\?)/i.test(url);
+        const assetLoader=isFbx ? fbxLoader : loader;
+        console.log("Trying avatar asset:",url);
+        assetLoader.load(url,asset=>{
+            /* Normalise FBX and GLB to the small shape this app consumes. */
+            onLoad(isFbx ? {
+                scene:asset,
+                animations:asset.animations || [],
+                sourceUrl:url,
+                isFbx:true
+            } : asset);
+        },onProgress,err=>{
+            lastError=err;
+            console.warn("Avatar asset not found or failed:",url);
+            tryNext();
+        });
+    };
+    tryNext();
+}
+
+/* Rocketbox source textures were originally referenced by absolute authoring
+   paths.  We bundle the corresponding local files and attach them here. */
+function applyRocketboxAppearance(model){
+    const textures={};
+    const loadTexture=(key,url)=>{
+        tgaLoader.load(url,texture=>{
+            texture.colorSpace=THREE.SRGBColorSpace;
+            /* FBX/TGA UVs use the loader's standard vertical orientation. */
+            textures[key]=texture;
+            model.traverse(object=>{
+                if(!object.isMesh) return;
+                const materials=Array.isArray(object.material) ? object.material : [object.material];
+                for(const material of materials){
+                    const name=(material?.name||"").toLowerCase();
+                    if((key==="body" && name.includes("body")) ||
+                       (key==="head" && name.includes("head")) ||
+                       (key==="hair" && name.includes("opacity"))){
+                        material.map=texture;
+                        material.color.setHex(0xffffff);
+                        material.needsUpdate=true;
+                    }
+                }
+            });
+        },undefined,error=>console.warn("Rocketbox texture unavailable:",url,error));
+    };
+    loadTexture("body","./assets/rocketbox-body-color.tga");
+    loadTexture("head","./assets/rocketbox-head-color.tga");
+    loadTexture("hair","./assets/rocketbox-hair-color.tga");
+
+    model.traverse(object=>{
+        if(!object.isMesh) return;
+        const materials=Array.isArray(object.material) ? object.material : [object.material];
+        for(const material of materials){
+            if(!material) continue;
+            const name=(material.name||"").toLowerCase();
+            material.map=null;
+            material.normalMap=null;
+            material.specularMap=null;
+            material.alphaMap=null;
+            material.transparent=false;
+            material.opacity=1;
+            material.roughness=.72;
+            material.metalness=0;
+            if(name.includes("head")){
+                material.color.setHex(0xc98f6c);
+            }
+            else if(name.includes("opacity") || name.includes("hair")){
+                material.color.setHex(0x2a1c17);
+            }
+            else{
+                /* Full-body material: a clear casual blue outfit/skin tone
+                   is preferable to the unreadable black TGA placeholder. */
+                material.color.setHex(0x3d6f98);
+            }
+            material.needsUpdate=true;
+        }
+    });
+}
+
+window.addEventListener("error",e=>{
+    console.error("Blu runtime error:",e.error||e.message);
+    showError("Blu error: "+(e.message||"Unknown JavaScript error"));
+});
+
+/* =========================================================
+   WORLD LOAD
+========================================================= */
+
+loadGLTFCandidates(
+
+    /* Use the known asset directly.  Sequential 404 fallbacks delayed every start. */
+    ["./assets/world.glb"],
+
+    gltf=>{
+
+        world=gltf.scene;
+
+        world.traverse(
+            object=>{
+
+                if(object.isMesh){
+
+                    object.castShadow=true;
+
+                    object.receiveShadow=true;
+
+                    navigationMeshes.push(
+                        object
+                    );
+
+                    cameraOccluders.push(object);
+                }
+            }
+        );
+
+        scene.add(world);
+
+        worldReady=true;
+
+        document.getElementById(
+            "status"
+        ).textContent=
+        "Village loaded âœ“";
+
+        console.log(
+            "WORLD LOADED",
+            world
+        );
+
+        /* Rendering and chat are already live.  Map collision in small
+           background slices so it can never hold the page on the loader. */
+        setTimeout(buildNavigation,800);
+
+    },
+
+    event=>updateLoadProgress(
+        "Loading the village...",
+        "Blu will be ready first — village",
+        event
+    ),
+
+    error=>{
+
+        console.error(
+            error
+        );
+
+        showError(
+            "Village model could not be loaded from assets/world.glb."
+        );
+
+    }
+);
+
+
+/* =========================================================
+   BLU LOAD
+========================================================= */
+
+loadGLTFCandidates(
+
+    /* Matched expressive human: native idle/walk/run/laugh motion and facial
+       blend shapes. Original Blu remains a safe visual fallback. */
+    ["./assets/rocketbox-male-facial.fbx", "./assets/blu.glb"],
+
+    gltf=>{
+
+        bluModel=gltf.scene;
+
+        bluModel.updateMatrixWorld(true);
+
+
+        const box=
+        new THREE.Box3()
+        .setFromObject(
+            bluModel
+        );
+
+        const size=
+        new THREE.Vector3();
+
+        box.getSize(size);
+
+
+        const TARGET_HEIGHT=4.5;
+
+        const scale=
+        TARGET_HEIGHT/
+        Math.max(size.y,.001);
+
+        bluModel.scale.setScalar(
+            scale
+        );
+
+        bluModel.updateMatrixWorld(
+            true
+        );
+
+
+        const after=
+        new THREE.Box3()
+        .setFromObject(
+            bluModel
+        );
+
+        bluModel.position.y=
+        -after.min.y;
+
+
+        bluModel.traverse(
+            object=>{
+
+                if(object.isMesh){
+
+                    object.castShadow=true;
+
+                    object.receiveShadow=true;
+
+                }
+            }
+        );
+
+        if(gltf.sourceUrl && gltf.sourceUrl.includes("rocketbox-")){
+            applyRocketboxAppearance(bluModel);
+        }
+
+
+        bluRoot=
+        new THREE.Group();
+
+        bluRoot.add(
+            bluModel
+        );
+
+        scene.add(
+            bluRoot
+        );
+
+
+        /*
+         * Starting position.
+         */
+
+        bluRoot.position.set(
+            -5,
+            0,
+            3
+        );
+
+
+        /* Create an animation mixer for the avatar's own rig. */
+
+        mixer=
+        new THREE.AnimationMixer(
+            bluModel
+        );
+
+        /*
+         * Collect all skeleton bones from skinned meshes.
+         */
+
+        let skeletonBones=null;
+
+        bluModel.traverse(
+            child=>{
+
+                if(
+                    child.isSkinnedMesh
+                ){
+
+                    skeletonBones=
+                    child.skeleton.bones;
+
+                    console.log(
+                        "SKELETON BONES:",
+                        skeletonBones.length
+                    );
+
+                }
+
+            }
+        );
+
+        /*
+         * Create procedural animation clips for every bone.
+         */
+
+        if(
+            skeletonBones &&
+            skeletonBones.length
+        ){
+
+            usingRocketbox=Boolean(gltf.sourceUrl && gltf.sourceUrl.includes("rocketbox-"));
+
+            const isExpressiveAvatar=skeletonBones.some(
+                bone=>bone.name==="Hips"
+            );
+
+            if(isExpressiveAvatar){
+                BLU_BONES=EXPRESSIVE_AVATAR_BONES;
+                console.log("Expressive human avatar detected: using its standard rig and facial visemes.");
+            }
+
+            if(usingRocketbox){
+                console.log(`Rocketbox human detected: loading ${skeletonBones.length}-bone matched native motion set.`);
+                loadRocketboxMotionSet();
+            }
+            else{
+                console.log(
+                    `Found ${skeletonBones.length} bones, creating animations...`
+                );
+
+                createProceduralAnimations(
+                    skeletonBones
+                );
+
+                playAnimation(
+                    "idle"
+                );
+
+                if(isExpressiveAvatar){
+                    loadExpressiveWalkAnimation();
+                }
+            }
+
+        }
+        else{
+
+            console.log("No skeleton bones found.");
+
+        }
+
+        initProcedural();
+
+        setProceduralAnimation(
+            "idle"
+        );
+
+        prepareFaceMeshes();
+
+
+        bluReady=true;
+
+
+        updateLoadingState();
+
+        document.getElementById(
+            "status"
+        ).textContent=
+        "Blu ready âœ“";
+
+
+        /*
+         * Type welcome message.
+         */
+
+        setTimeout(
+            ()=>{
+
+                typeBluMessage(
+                    "Hello! I'm Blu. Welcome to my village! ðŸ‘‹"
+                );
+
+            },
+            600
+        );
+
+
+        setEmotion(
+            "happy",
+            "ðŸ˜Š Blu is happy!"
+        );
+
+
+        camera.position.set(
+            -5,
+            3.4,
+            10
+        );
+
+        camera.lookAt(
+            -5,
+            2.15,
+            3
+        );
+
+
+        /*
+         * Check for Ollama AI.
+         */
+
+        checkOllama();
+
+        updateFeatureBadges();
+
+
+        /*
+         * Start autonomous life.
+         */
+
+        setTimeout(
+            startRandomActivity,
+            2500
+        );
+
+    },
+
+    event=>updateLoadProgress(
+        "Loading Blu...",
+        "Preparing Blu",
+        event
+    ),
+
+    error=>{
+
+        console.error(
+            error
+        );
+
+        showError(
+            "Neither the expressive human avatar nor the original Blu model could be loaded."
+        );
+
+    }
+);
+
+
+/* =========================================================
+   FALLBACK BLU (when GLB fails to load)
+========================================================= */
+
+/* =========================================================
+   FALLBACK BLU â€” ARTICULATED CHARACTER
+   A posable 3D human with moving arms, legs, head, body.
+   Built from Three.js primitives with joint hierarchy.
+========================================================= */
+
+let bluJoints={};
+
+let bluJointTargets={};
+
+let bluJointVelocities={};
+
+
+function createFallbackBlu(){
+
+    document.getElementById(
+        "status"
+    ).textContent=
+    "Building Blu from scratchâ€¦";
+
+    bluRoot=
+    new THREE.Group();
+
+    /*
+     * Materials.
+     */
+
+    const skin=
+    new THREE.MeshStandardMaterial({
+        color:0xe8b88a,
+        roughness:.65,
+        metalness:.02
+    });
+
+    const cloth=
+    new THREE.MeshStandardMaterial({
+        color:0x3a7a9f,
+        roughness:.7,
+        metalness:.08
+    });
+
+    const clothDark=
+    new THREE.MeshStandardMaterial({
+        color:0x2a5a7a,
+        roughness:.8,
+        metalness:.05
+    });
+
+    const shoe=
+    new THREE.MeshStandardMaterial({
+        color:0x4a3a2a,
+        roughness:.9
+    });
+
+    const eyeW=
+    new THREE.MeshStandardMaterial({
+        color:0xffffff,
+        roughness:.05
+    });
+
+    const eyeP=
+    new THREE.MeshStandardMaterial({
+        color:0x2a2a3a,
+        roughness:.2
+    });
+
+    const mouthMat=
+    new THREE.MeshStandardMaterial({
+        color:0x8b5a5a,
+        roughness:.6
+    });
+
+    const hatMat=
+    new THREE.MeshStandardMaterial({
+        color:0x2c5a7a,
+        roughness:.9
+    });
+
+    const beltMat=
+    new THREE.MeshStandardMaterial({
+        color:0x4a3a2a,
+        roughness:.8
+    });
+
+    /*
+     * Helper factory: create a joint group.
+     */
+
+    function joint(name){
+        const g=new THREE.Group();
+        g.name=name;
+        g.userData.isJoint=true;
+        return g;
+    }
+
+    /*
+     * Helper: create a mesh and add to parent.
+     */
+
+    function part(parent,geo,mat,x,y,z,rx,ry,rz,sx,sy,sz){
+        const m=new THREE.Mesh(geo,mat);
+        m.position.set(x||0,y||0,z||0);
+        if(rx)m.rotation.x=rx;
+        if(ry)m.rotation.y=ry;
+        if(rz)m.rotation.z=rz;
+        if(sx)m.scale.x=sx;
+        if(sy)m.scale.y=sy;
+        if(sz)m.scale.z=sz;
+        m.castShadow=true;
+        m.receiveShadow=true;
+        parent.add(m);
+        return m;
+    }
+
+    /*
+     * Geometries.
+     */
+
+    const headGeo=
+    new THREE.SphereGeometry(.4,14,14);
+    const eyeGeo=
+    new THREE.SphereGeometry(.055,8,8);
+    const pupilGeo=
+    new THREE.SphereGeometry(.028,6,6);
+    const neckGeo=
+    new THREE.CylinderGeometry(.22,.28,.2,8);
+    const torsoGeo=
+    new THREE.CylinderGeometry(.45,.6,.8,10);
+    const hipGeo=
+    new THREE.CylinderGeometry(.6,.5,.35,10);
+    const upperArmGeo=
+    new THREE.CylinderGeometry(.14,.16,.55,8);
+    const forearmGeo=
+    new THREE.CylinderGeometry(.11,.14,.5,8);
+    const handGeo=
+    new THREE.SphereGeometry(.1,6,6);
+    const thighGeo=
+    new THREE.CylinderGeometry(.2,.26,.55,8);
+    const shinGeo=
+    new THREE.CylinderGeometry(.15,.18,.5,8);
+    const footGeo=
+    new THREE.BoxGeometry(.18,.08,.3);
+    const hatGeo=
+    new THREE.CylinderGeometry(.28,.46,.18,10);
+    const mouthGeo=
+    new THREE.TorusGeometry(.1,.02,4,8,Math.PI);
+
+    /*
+     * Build joint hierarchy.
+     *
+     * bluRoot
+     *   â””â”€ hips (root joint, moves whole body)
+     *        â”œâ”€ bodyMesh (the combined torso/hip visual)
+     *        â”œâ”€ leftHip
+     *        â”‚   â””â”€ leftThigh (thighMesh)
+     *        â”‚       â””â”€ leftKnee
+     *        â”‚           â””â”€ leftShin (shinMesh + footMesh)
+     *        â”œâ”€ rightHip
+     *        â”‚   â””â”€ rightThigh (thighMesh)
+     *        â”‚       â””â”€ rightKnee
+     *        â”‚           â””â”€ rightShin (shinMesh + footMesh)
+     *        â””â”€ spine
+     *            â”œâ”€ spineMesh
+     *            â””â”€ chest
+     *                â”œâ”€ chestMesh
+     *                â”œâ”€ neck
+     *                â”‚   â””â”€ head (headMesh + eyes + mouth + hat)
+     *                â”œâ”€ leftShoulder
+     *                â”‚   â””â”€ leftUpperArm (upperArmMesh)
+     *                â”‚       â””â”€ leftElbow
+     *                â”‚           â””â”€ leftForearm (forearmMesh + handMesh)
+     *                â””â”€ rightShoulder
+     *                    â””â”€ rightUpperArm (upperArmMesh)
+     *                        â””â”€ rightElbow
+     *                            â””â”€ rightForearm (forearmMesh + handMesh)
+     */
+
+    const hips=joint("hips");
+    const spine=joint("spine");
+    spine.position.y=.65;
+    const chest=joint("chest");
+    chest.position.y=.45;
+    const neck=joint("neck");
+    neck.position.y=.55;
+    const head=joint("head");
+    head.position.y=.35;
+
+    const leftHip=joint("leftHip");
+    leftHip.position.set(-.32,0,0);
+    const leftThigh=joint("leftThigh");
+    leftThigh.position.y=-.1;
+    const leftKnee=joint("leftKnee");
+    leftKnee.position.y=-.3;
+    const rightHip=joint("rightHip");
+    rightHip.position.set(.32,0,0);
+    const rightThigh=joint("rightThigh");
+    rightThigh.position.y=-.1;
+    const rightKnee=joint("rightKnee");
+    rightKnee.position.y=-.3;
+
+    const leftShoulder=joint("leftShoulder");
+    leftShoulder.position.set(-.42,.5,0);
+    const leftUpperArm=joint("leftUpperArm");
+    leftUpperArm.position.y=-.1;
+    const leftElbow=joint("leftElbow");
+    leftElbow.position.y=-.3;
+    const rightShoulder=joint("rightShoulder");
+    rightShoulder.position.set(.42,.5,0);
+    const rightUpperArm=joint("rightUpperArm");
+    rightUpperArm.position.y=-.1;
+    const rightElbow=joint("rightElbow");
+    rightElbow.position.y=-.3;
+
+    /*
+     * Attach hierarchy.
+     */
+
+    bluRoot.add(hips);
+
+    /*
+     * Hip area + body visual.
+     */
+
+    const bodyGroup=
+    new THREE.Group();
+
+    part(bodyGroup,hipGeo,clothDark,
+        0,.1,0);
+
+    part(bodyGroup,torsoGeo,cloth,
+        0,.55,0);
+
+    const belt=
+    new THREE.Mesh(
+        new THREE.TorusGeometry(.52,.05,6,12),
+        beltMat
+    );
+
+    belt.position.y=.28;
+
+    belt.rotation.x=Math.PI/2;
+
+    belt.castShadow=true;
+
+    bodyGroup.add(belt);
+
+    hips.add(bodyGroup);
+
+    /*
+     * Spine chain.
+     */
+
+    hips.add(spine);
+
+    part(spine,
+        new THREE.CylinderGeometry(
+            .08,.12,.5,6
+        ),
+        cloth,0,.25,0
+    );
+
+    spine.add(chest);
+
+    part(chest,torsoGeo,cloth,
+        0,.2,0,.05);
+
+    /*
+     * Neck + head.
+     */
+
+    chest.add(neck);
+
+    part(neck,neckGeo,skin,
+        0,0,0);
+
+    neck.add(head);
+
+    part(head,headGeo,skin,
+        0,0,0);
+
+    part(head,hatGeo,hatMat,
+        0,.52,0);
+
+    /*
+     * Eyes.
+     */
+
+    const leftEye=
+    new THREE.Mesh(eyeGeo,eyeW);
+    leftEye.position.set(-.16,.1,.36);
+    head.add(leftEye);
+
+    const rightEye=
+    new THREE.Mesh(eyeGeo,eyeW);
+    rightEye.position.set(.16,.1,.36);
+    head.add(rightEye);
+
+    const leftPupil=
+    new THREE.Mesh(pupilGeo,eyeP);
+    leftPupil.position.set(-.16,.1,.41);
+    head.add(leftPupil);
+
+    const rightPupil=
+    new THREE.Mesh(pupilGeo,eyeP);
+    rightPupil.position.set(.16,.1,.41);
+    head.add(rightPupil);
+
+    /*
+     * Mouth.
+     */
+
+    const mouth=
+    new THREE.Mesh(mouthGeo,mouthMat);
+    mouth.position.set(0,-.1,.36);
+    mouth.rotation.x=.15;
+    head.add(mouth);
+
+    /*
+     * Cheeks (subtle spheres for character).
+     */
+
+    const cheekMat=
+    new THREE.MeshStandardMaterial({
+        color:0xd4a080,
+        roughness:.7
+    });
+
+    const cheekGeo=
+    new THREE.SphereGeometry(
+        .06,6,6
+    );
+
+    const leftCheek=
+    new THREE.Mesh(cheekGeo,cheekMat);
+    leftCheek.position.set(-.22,-.08,.33);
+    head.add(leftCheek);
+
+    const rightCheek=
+    new THREE.Mesh(cheekGeo,cheekMat);
+    rightCheek.position.set(.22,-.08,.33);
+    head.add(rightCheek);
+
+    /*
+     * Arms.
+     */
+
+    chest.add(leftShoulder);
+    leftShoulder.add(leftUpperArm);
+
+    part(leftUpperArm,upperArmGeo,skin,
+        0,0,0,.1,0,.05);
+
+    leftUpperArm.add(leftElbow);
+    part(leftElbow,forearmGeo,skin,
+        0,0,0);
+    part(leftElbow,handGeo,skin,
+        0,-.32,0);
+
+    chest.add(rightShoulder);
+    rightShoulder.add(rightUpperArm);
+
+    part(rightUpperArm,upperArmGeo,skin,
+        0,0,0,-.1,0,-.05);
+
+    rightUpperArm.add(rightElbow);
+    part(rightElbow,forearmGeo,skin,
+        0,0,0);
+    part(rightElbow,handGeo,skin,
+        0,-.32,0);
+
+    /*
+     * Legs.
+     */
+
+    hips.add(leftHip);
+    leftHip.add(leftThigh);
+
+    part(leftThigh,thighGeo,clothDark,
+        0,0,0);
+
+    leftThigh.add(leftKnee);
+    part(leftKnee,shinGeo,skin,
+        0,0,0);
+    part(leftKnee,footGeo,shoe,
+        0,-.3,.05);
+
+    hips.add(rightHip);
+    rightHip.add(rightThigh);
+
+    part(rightThigh,thighGeo,clothDark,
+        0,0,0);
+
+    rightThigh.add(rightKnee);
+    part(rightKnee,shinGeo,skin,
+        0,0,0);
+    part(rightKnee,footGeo,shoe,
+        0,-.3,.05);
+
+    /*
+     * Store all joints for animation.
+     */
+
+    bluJoints={
+        spine,
+        chest,
+        neck,
+        head,
+        leftHip,
+        leftThigh,
+        leftKnee,
+        rightHip,
+        rightThigh,
+        rightKnee,
+        leftShoulder,
+        leftUpperArm,
+        leftElbow,
+        rightShoulder,
+        rightUpperArm,
+        rightElbow,
+        hips
+    };
+
+    /*
+     * Initialize joint targets (current rotation).
+     */
+
+    for(
+        const key in bluJoints
+    ){
+
+        bluJointTargets[key]={
+            x:0,y:0,z:0
+        };
+
+        bluJointVelocities[key]={
+            x:0,y:0,z:0
+        };
+
+    }
+
+    /*
+     * Scale and position.
+     */
+
+    bluRoot.scale.setScalar(2.2);
+    bluRoot.position.set(0,0,5);
+
+    scene.add(bluRoot);
+
+    /*
+     * Expose for initProcedural.
+     */
+
+    window.__bluMesh=bodyGroup;
+
+    bluModel={
+        traverse(fn){
+            bluRoot.traverse(fn);
+        },
+        position:bluRoot.position,
+        rotation:bluRoot.rotation,
+        material:cloth
+    };
+
+    /*
+     * Initialize.
+     */
+
+    initProcedural();
+
+    setProceduralAnimation("idle");
+
+    bluReady=true;
+
+    document.getElementById(
+        "loading"
+    ).style.display="none";
+
+    document.getElementById(
+        "status"
+    ).textContent="Blu ready âœ“";
+
+    setTimeout(
+        ()=>{
+            typeBluMessage(
+                "Hey! I'm Blu! Watch me move! ðŸŒŸ"
+            );
+        },
+        600
+    );
+
+    setEmotion(
+        "happy",
+        "ðŸ˜Š Blu is alive!"
+    );
+
+    camera.position.set(0,4,14);
+    camera.lookAt(0,2.2,5);
+
+    checkOllama();
+    updateFeatureBadges();
+
+    setTimeout(startRandomActivity,2500);
+
+}
+
+/* =========================================================
+   PROCEDURAL BONE ANIMATIONS
+   Creates AnimationClips that drive the GLB skeleton bones.
+========================================================= */
+
+let BLU_BONES={
+    HIP:'CC_Base_Hip_02', SPINE1:'CC_Base_Spine01_034', SPINE2:'CC_Base_Spine02_035',
+    NECK:'CC_Base_NeckTwist01_036', HEAD:'CC_Base_Head_038',
+    L_CLAVICLE:'CC_Base_L_Clavicle_049', L_UPPERARM:'CC_Base_L_Upperarm_050', L_FOREARM:'CC_Base_L_Forearm_051', L_HAND:'CC_Base_L_Hand_055',
+    R_CLAVICLE:'CC_Base_R_Clavicle_077', R_UPPERARM:'CC_Base_R_Upperarm_078', R_FOREARM:'CC_Base_R_Forearm_079', R_HAND:'CC_Base_R_Hand_083',
+    L_THIGH:'CC_Base_L_Thigh_04', L_CALF:'CC_Base_L_Calf_05', L_FOOT:'CC_Base_L_Foot_06',
+    R_THIGH:'CC_Base_R_Thigh_019', R_CALF:'CC_Base_R_Calf_020', R_FOOT:'CC_Base_R_Foot_022',
+    JAW:'CC_Base_JawRoot_040'
+};
+
+/* The replacement uses a standard Mixamo-compatible skeleton.  Its native
+   walk clip targets these exact bones, which prevents the hand-axis problem
+   caused by applying CC-rig rotations to a different skeleton. */
+const EXPRESSIVE_AVATAR_BONES={
+    HIP:'Hips', SPINE1:'Spine', SPINE2:'Spine1', NECK:'Neck', HEAD:'Head',
+    L_CLAVICLE:'LeftShoulder', L_UPPERARM:'LeftArm', L_FOREARM:'LeftForeArm', L_HAND:'LeftHand',
+    R_CLAVICLE:'RightShoulder', R_UPPERARM:'RightArm', R_FOREARM:'RightForeArm', R_HAND:'RightHand',
+    L_THIGH:'LeftUpLeg', L_CALF:'LeftLeg', L_FOOT:'LeftFoot',
+    R_THIGH:'RightUpLeg', R_CALF:'RightLeg', R_FOOT:'RightFoot',
+    JAW:'Jaw'
+};
+
+function loadExpressiveWalkAnimation(){
+    fbxLoader.load(
+        "./assets/avatar-male-walk.fbx",
+        fbx=>{
+            const clip=fbx.animations && fbx.animations[0];
+            if(!clip || !mixer) return;
+            clip.name="walk_native";
+            const action=mixer.clipAction(clip);
+            action.setLoop(THREE.LoopRepeat,Infinity);
+            action.enabled=true;
+            actions.walk_native=action;
+            console.log("Native human walk loaded:",clip.duration,"seconds");
+        },
+        undefined,
+        error=>console.warn("Native walk animation could not load; safe idle remains active.",error)
+    );
+}
+
+function removeRootMotion(clip){
+    const clean=clip.clone();
+    /* Blu's navigation already moves bluRoot.  Removing translation tracks
+       prevents a walking animation from sliding him through the village. */
+    clean.tracks=clean.tracks.filter(track=>
+        !track.name.endsWith(".position") &&
+        !/^(Bip01_Footsteps|MotionExtractionHelper)\./.test(track.name)
+    );
+    return clean;
+}
+
+function loadRocketboxMotionSet(){
+    const motionFiles={
+        idle:"./assets/rocketbox-idle.fbx",
+        walk:"./assets/rocketbox-walk.fbx",
+        run:"./assets/rocketbox-run.fbx",
+        laugh:"./assets/rocketbox-laugh.fbx",
+        talk:"./assets/rocketbox-talk.fbx"
+    };
+    let remaining=Object.keys(motionFiles).length;
+
+    const finish=()=>{
+        remaining--;
+        if(remaining>0) return;
+        nativeMotionReady=true;
+        console.log("Rocketbox native motions ready:",Object.keys(actions));
+        playAnimation(pendingAnimationType || "idle");
+        pendingAnimationType=null;
+    };
+
+    for(const [name,url] of Object.entries(motionFiles)){
+        fbxLoader.load(url,fbx=>{
+            const source=fbx.animations && fbx.animations[0];
+            if(source && mixer){
+                const clip=removeRootMotion(source);
+                clip.name="native_"+name;
+                const action=mixer.clipAction(clip);
+                action.setLoop(name==="laugh" ? THREE.LoopOnce : THREE.LoopRepeat,
+                    name==="laugh" ? 1 : Infinity);
+                action.clampWhenFinished=name==="laugh";
+                action.enabled=true;
+                actions[clip.name]=action;
+            }
+            finish();
+        },undefined,error=>{
+            console.error("Rocketbox motion failed:",name,error);
+            finish();
+        });
+    }
+}
+
+function createProceduralAnimations(bones){
+    /*
+     * HUMAN-REALISTIC animations for Blu.
+     * Key principles:
+     * - Large, flowing movements (not twitchy micro-rotations)
+     * - Full arm rotation to hang naturally at sides (z: ±1.57)
+     * - Hip twist + spine counter-rotation for walk/run
+     * - Head stabilization (opposes spine motion)
+     * - Visible breathing and weight shift in idle
+     * - Jaw opening for talk/laugh
+     */
+    const boneMap={};
+    bones.forEach(b=>boneMap[b.name]=b);
+    const findBone=name=>boneMap[name] || bones.find(b=>b.name.toLowerCase()===String(name).toLowerCase());
+    const rest=new Map(bones.map(b=>[b.name,b.quaternion.clone()]));
+    // These CC arm axes vary between exports.  Do not rotate them procedurally:
+    // an incorrect local axis makes elbows/wrists look dislocated.  Keep Blu's
+    // authored rest pose until the replacement avatar's native motion clips load.
+    const protectedArmBones=new Set([
+        'L_CLAVICLE','R_CLAVICLE','L_UPPERARM','R_UPPERARM',
+        'L_FOREARM','R_FOREARM','L_HAND','R_HAND'
+    ]);
+
+    function dq(x=0,y=0,z=0){
+        return new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,z,'XYZ'));
+    }
+    function track(key,keyframes){
+        if(protectedArmBones.has(key)) return null;
+        const b=findBone(BLU_BONES[key]);
+        if(!b) return null;
+        const base=rest.get(b.name);
+        const times=[],values=[];
+        for(const k of keyframes){
+            const q=base.clone().multiply(dq(k.x||0,k.y||0,k.z||0));
+            times.push(k.t); values.push(q.x,q.y,q.z,q.w);
+        }
+        return new THREE.QuaternionKeyframeTrack(b.name+'.quaternion',times,values);
+    }
+    function expressiveArmRest(key,z){
+        /* AvatarSDK's unanimated armature is exported in a T-pose.  Its
+           standard local-Z shoulder axis is known, so this one static pose
+           lowers the arms without touching elbows, wrists or fingers. */
+        if(BLU_BONES.HIP!=="Hips") return null;
+        const b=findBone(BLU_BONES[key]);
+        if(!b) return null;
+        const base=rest.get(b.name);
+        const q=base.clone().multiply(dq(0,0,z));
+        return new THREE.QuaternionKeyframeTrack(
+            b.name+'.quaternion',[0,6],[q.x,q.y,q.z,q.w,q.x,q.y,q.z,q.w]
+        );
+    }
+    function clip(name,duration,tracks,loop=THREE.LoopRepeat){
+        const c=new THREE.AnimationClip(name,duration,tracks.filter(Boolean));
+        const a=mixer.clipAction(c);
+        a.setLoop(loop, loop===THREE.LoopRepeat ? Infinity : 1);
+        a.clampWhenFinished=loop===THREE.LoopOnce;
+        a.zeroSlopeAtStart=true; a.zeroSlopeAtEnd=true;
+        a.enabled=true; actions[name]=a;
+    }
+
+    const ZL=-Math.PI/2, ZR=Math.PI/2;
+
+    // ─── IDLE: breathing + weight shift + gentle sway ───
+    clip('idle',6,[
+        track('HIP',[{t:0,y:0,z:0},{t:1.5,y:.04,z:.02},{t:3,y:0,z:-.02},{t:4.5,y:-.04,z:.02},{t:6,y:0,z:0}]),
+        track('SPINE1',[{t:0,x:-.06,z:0},{t:1.5,x:-.04,z:.015},{t:3,x:-.06,z:-.015},{t:4.5,x:-.08,z:.015},{t:6,x:-.06,z:0}]),
+        track('HEAD',[{t:0,y:.03,x:-.01},{t:1.5,y:.02,x:.01},{t:3,y:.03,x:-.01},{t:4.5,y:.01,x:.02},{t:6,y:.03,x:-.01}]),
+        expressiveArmRest('L_UPPERARM',Math.PI/2),
+        expressiveArmRest('R_UPPERARM',-Math.PI/2),
+        track('L_FOREARM',[{t:0,x:.5},{t:6,x:.5}]),
+        track('R_FOREARM',[{t:0,x:-.5},{t:6,x:-.5}]),
+        track('L_HAND',[{t:0,z:-.2,x:.1},{t:6,z:-.2,x:.1}]),
+        track('R_HAND',[{t:0,z:.2,x:-.1},{t:6,z:.2,x:-.1}])
+    ]);
+
+    // ─── WALK: two complete steps with planted feet and counter balance ───
+    // The earlier gait ended after only half a stride, making Blu slide and
+    // snap back to centre.  Every track below now finishes in its start pose.
+    const W=1.2;
+    clip('walk',W,[
+        track('HIP',[{t:0,y:.025,z:.035},{t:.15,y:-.01,z:.01},{t:.3,y:-.025,z:-.035},{t:.45,y:-.01,z:-.01},{t:.6,y:.025,z:.035},{t:.75,y:-.01,z:.01},{t:.9,y:-.025,z:-.035},{t:1.05,y:-.01,z:-.01},{t:W,y:.025,z:.035}]),
+        track('SPINE1',[{t:0,x:-.055,z:-.035},{t:.3,x:-.045,z:.035},{t:.6,x:-.055,z:-.035},{t:.9,x:-.045,z:.035},{t:W,x:-.055,z:-.035}]),
+        track('L_THIGH',[{t:0,x:.42},{t:.15,x:.10},{t:.3,x:-.32},{t:.45,x:-.08},{t:.6,x:.42},{t:.75,x:.10},{t:.9,x:-.32},{t:1.05,x:-.08},{t:W,x:.42}]),
+        track('R_THIGH',[{t:0,x:-.32},{t:.15,x:-.08},{t:.3,x:.42},{t:.45,x:.10},{t:.6,x:-.32},{t:.75,x:-.08},{t:.9,x:.42},{t:1.05,x:.10},{t:W,x:-.32}]),
+        track('L_CALF',[{t:0,x:.12},{t:.15,x:.10},{t:.3,x:.14},{t:.45,x:.58},{t:.6,x:.12},{t:.75,x:.10},{t:.9,x:.14},{t:1.05,x:.58},{t:W,x:.12}]),
+        track('R_CALF',[{t:0,x:.14},{t:.15,x:.58},{t:.3,x:.12},{t:.45,x:.10},{t:.6,x:.14},{t:.75,x:.58},{t:.9,x:.12},{t:1.05,x:.10},{t:W,x:.14}]),
+        track('L_FOOT',[{t:0,x:.03},{t:.3,x:-.09},{t:.45,x:.13},{t:.6,x:.03},{t:.9,x:-.09},{t:1.05,x:.13},{t:W,x:.03}]),
+        track('R_FOOT',[{t:0,x:-.09},{t:.15,x:.13},{t:.3,x:.03},{t:.6,x:-.09},{t:.75,x:.13},{t:.9,x:.03},{t:W,x:-.09}]),
+        track('L_UPPERARM',[{t:0,x:-.20,z:ZL},{t:.3,x:.27,z:ZL},{t:.6,x:-.20,z:ZL},{t:.9,x:.27,z:ZL},{t:W,x:-.20,z:ZL}]),
+        track('R_UPPERARM',[{t:0,x:.27,z:ZR},{t:.3,x:-.20,z:ZR},{t:.6,x:.27,z:ZR},{t:.9,x:-.20,z:ZR},{t:W,x:.27,z:ZR}]),
+        track('L_FOREARM',[{t:0,x:.22},{t:.3,x:.12},{t:.6,x:.22},{t:.9,x:.12},{t:W,x:.22}]),
+        track('R_FOREARM',[{t:0,x:-.12},{t:.3,x:-.22},{t:.6,x:-.12},{t:.9,x:-.22},{t:W,x:-.12}]),
+        track('HEAD',[{t:0,x:-.015,y:.018},{t:.3,x:.008,y:-.018},{t:.6,x:-.015,y:.018},{t:.9,x:.008,y:-.018},{t:W,x:-.015,y:.018}])
+    ]);
+
+    // ─── RUN: exaggerated stride + bounce + forward lean ───
+    const RN=.6;
+    clip('run',RN,[
+        track('HIP',[{t:0,y:.12,z:0},{t:.15,y:.18,z:.14},{t:.3,y:.12,z:0},{t:.45,y:-.12,z:-.14},{t:RN,y:.12,z:0}]),
+        track('SPINE1',[{t:0,x:-.15,z:-.12},{t:.3,x:-.18,z:.12},{t:RN,x:-.15,z:-.12}]),
+        track('L_THIGH',[{t:0,x:1.1},{t:.075,x:-.15},{t:.15,x:-1.2},{t:.225,x:.15},{t:.3,x:1.1}]),
+        track('R_THIGH',[{t:0,x:-1.2},{t:.075,x:.15},{t:.15,x:1.1},{t:.225,x:-.15},{t:.3,x:-1.2}]),
+        track('L_CALF',[{t:0,x:.45},{t:.075,x:.7},{t:.15,x:1.3},{t:.225,x:.3},{t:.3,x:.45}]),
+        track('R_CALF',[{t:0,x:.3},{t:.075,x:.45},{t:.15,x:.3},{t:.225,x:.7},{t:.3,x:.3}]),
+        track('L_UPPERARM',[{t:0,x:1.1,z:ZL},{t:.15,x:-.7,z:ZL},{t:.3,x:1.1,z:ZL}]),
+        track('R_UPPERARM',[{t:0,x:-.7,z:ZR},{t:.15,x:1.1,z:ZR},{t:.3,x:-.7,z:ZR}]),
+        track('L_FOREARM',[{t:0,x:.5},{t:.15,x:-.7},{t:.3,x:.5}]),
+        track('R_FOREARM',[{t:0,x:-.5},{t:.15,x:.7},{t:.3,x:-.5}]),
+        track('HEAD',[{t:0,y:-.01,z:.08},{t:.15,y:.01,z:-.08},{t:.3,y:-.01,z:.08}])
+    ]);
+
+    // ─── WAVE: friendly full-body gesture ───
+    clip('wave',2.2,[
+        track('R_CLAVICLE',[{t:0,x:0},{t:.3,x:-.3},{t:1.6,x:-.3},{t:2.2,x:0}]),
+        track('R_UPPERARM',[{t:0,x:.3,z:ZR},{t:.3,x:-1.2,z:.6},{t:1.6,x:-1.2,z:.6},{t:2.2,x:.3,z:ZR}]),
+        track('R_FOREARM',[{t:0,x:-.4},{t:.3,x:-2.0},{t:.7,x:-1.5},{t:1.1,x:-2.1},{t:1.6,x:-1.5},{t:2.2,x:-.4}]),
+        track('R_HAND',[{t:0,z:.2},{t:.5,z:.4},{t:.8,z:-.3},{t:1.1,z:.4},{t:1.4,z:-.3},{t:2.2,z:.2}]),
+        track('HEAD',[{t:0,y:.05},{t:1.1,y:.08},{t:2.2,y:.05}]),
+        track('L_UPPERARM',[{t:0,z:ZL},{t:2.2,z:ZL}]),
+        track('SPINE1',[{t:0,x:-.08},{t:1.1,x:-.05},{t:2.2,x:-.08}])
+    ],THREE.LoopOnce);
+
+    // ─── TALK: head nods + jaw + hand gestures ───
+    clip('talk',2.4,[
+        track('HEAD',[{t:0,y:0},{t:.4,y:.15},{t:.8,y:-.12},{t:1.2,y:.1},{t:1.6,y:-.08},{t:2,y:.12},{t:2.4,y:0}]),
+        track('NECK',[{t:0,x:0},{t:.6,x:.08},{t:1.2,x:0},{t:1.8,x:.06},{t:2.4,x:0}]),
+        track('R_UPPERARM',[{t:0,x:.2,z:ZR},{t:.6,x:-.6,z:1.3},{t:1.2,x:.1,z:ZR},{t:1.8,x:-.5,z:1.4},{t:2.4,x:.2,z:ZR}]),
+        track('R_FOREARM',[{t:0,x:-.3},{t:.6,x:-.9},{t:1.2,x:-.2},{t:1.8,x:-.8},{t:2.4,x:-.3}]),
+        track('L_UPPERARM',[{t:0,z:ZL},{t:2.4,z:ZL}]),
+        track('JAW',[{t:0,z:0},{t:.2,z:.18},{t:.35,z:.05},{t:.5,z:.16},{t:.7,z:.04},{t:.9,z:.18},{t:1.1,z:.05},{t:1.3,z:.17},{t:1.5,z:.04},{t:1.7,z:.18},{t:1.9,z:.05},{t:2.1,z:.16},{t:2.4,z:0}]),
+        track('SPINE1',[{t:0,x:-.08},{t:1.2,x:-.06},{t:2.4,x:-.08}])
+    ]);
+
+    // ─── HAPPY: arms lift + bounce + wide smile ───
+    clip('happy',2,[
+        track('L_UPPERARM',[{t:0,x:-.5,z:-1.2},{t:.5,x:-1.1,z:-.9},{t:1,x:-.4,z:-1.2},{t:1.5,x:-1,z:-.95},{t:2,x:-.5,z:-1.2}]),
+        track('R_UPPERARM',[{t:0,x:.5,z:1.2},{t:.5,x:1.1,z:.9},{t:1,x:.4,z:1.2},{t:1.5,x:1,z:.95},{t:2,x:.5,z:1.2}]),
+        track('HEAD',[{t:0,x:-.1,y:.05},{t:.5,x:.12,y:-.08},{t:1,x:-.08,y:.06},{t:1.5,x:.1,y:-.07},{t:2,x:-.1,y:.05}]),
+        track('SPINE1',[{t:0,x:-.12},{t:.5,x:-.05},{t:1,x:-.12},{t:1.5,x:-.06},{t:2,x:-.12}]),
+        track('L_FOREARM',[{t:0,x:-.3},{t:.5,x:.5},{t:1,x:-.3},{t:1.5,x:.4},{t:2,x:-.3}]),
+        track('R_FOREARM',[{t:0,x:.3},{t:.5,x:-.5},{t:1,x:.3},{t:1.5,x:-.4},{t:2,x:.3}])
+    ],THREE.LoopOnce);
+
+    // ─── SAD: shoulders slump + head forward ───
+    clip('sad',2.8,[
+        track('SPINE1',[{t:0,x:.15},{t:1.4,x:.3},{t:2.8,x:.15}]),
+        track('NECK',[{t:0,x:.12},{t:1.4,x:.25},{t:2.8,x:.12}]),
+        track('HEAD',[{t:0,x:.2,y:-.08},{t:1,x:.35,y:-.1},{t:2,x:.25,y:-.09},{t:2.8,x:.2,y:-.08}]),
+        track('L_UPPERARM',[{t:0,x:.4,z:ZL},{t:2.8,x:.4,z:ZL}]),
+        track('R_UPPERARM',[{t:0,x:-.4,z:ZR},{t:2.8,x:-.4,z:ZR}]),
+        track('L_FOREARM',[{t:0,x:.6},{t:1.4,x:.8},{t:2.8,x:.6}]),
+        track('R_FOREARM',[{t:0,x:-.6},{t:1.4,x:-.8},{t:2.8,x:-.6}]),
+        track('HIP',[{t:0,y:-.05},{t:1.4,y:-.1},{t:2.8,y:-.05}])
+    ],THREE.LoopOnce);
+
+    // ─── CRY: shoulders shake + head nod ───
+    clip('cry',2.4,[
+        track('SPINE1',[{t:0,x:.12},{t:.4,x:.25},{t:.8,x:.14},{t:1.2,x:.26},{t:1.6,x:.15},{t:2.4,x:.12}]),
+        track('HEAD',[{t:0,x:.2,y:-.08},{t:.4,x:.35,y:-.1},{t:.8,x:.22,y:-.09},{t:1.2,x:.36,y:-.1},{t:1.6,x:.23,y:-.09},{t:2.4,x:.2,y:-.08}]),
+        track('L_UPPERARM',[{t:0,x:.3,z:ZL},{t:.6,x:.5,z:ZL},{t:1.2,x:.3,z:ZL},{t:1.8,x:.5,z:ZL},{t:2.4,x:.3,z:ZL}]),
+        track('R_UPPERARM',[{t:0,x:-.3,z:ZR},{t:.6,x:-.5,z:ZR},{t:1.2,x:-.3,z:ZR},{t:1.8,x:-.5,z:ZR},{t:2.4,x:-.3,z:ZR}])
+    ],THREE.LoopOnce);
+
+    // ─── ANGRY: tense + clenched fists + forward lean ───
+    clip('angry',1.8,[
+        track('SPINE1',[{t:0,x:-.15},{t:.4,x:-.25},{t:.8,x:-.15},{t:1.2,x:-.24},{t:1.8,x:-.15}]),
+        track('HEAD',[{t:0,x:-.12,y:-.08},{t:.4,x:-.22,y:-.1},{t:.8,x:-.12,y:-.08},{t:1.2,x:-.2,y:-.09},{t:1.8,x:-.12,y:-.08}]),
+        track('L_UPPERARM',[{t:0,x:.2,z:-1.4},{t:.4,x:.5,z:-1.3},{t:.8,x:.2,z:-1.4},{t:1.2,x:.48,z:-1.32},{t:1.8,x:.2,z:-1.4}]),
+        track('R_UPPERARM',[{t:0,x:-.2,z:1.4},{t:.4,x:-.5,z:1.3},{t:.8,x:-.2,z:1.4},{t:1.2,x:-.48,z:1.32},{t:1.8,x:-.2,z:1.4}]),
+        track('L_FOREARM',[{t:0,x:.3},{t:.4,x:.7},{t:.8,x:.3},{t:1.2,x:.65},{t:1.8,x:.3}]),
+        track('R_FOREARM',[{t:0,x:-.3},{t:.4,x:-.7},{t:.8,x:-.3},{t:1.2,x:-.65},{t:1.8,x:-.3}])
+    ],THREE.LoopOnce);
+
+    // ─── SURPRISED: arms fly up + jaw drops ───
+    clip('surprised',1.6,[
+        track('L_UPPERARM',[{t:0,x:-.3,z:-1.2},{t:.3,x:-1.4,z:-.5},{t:1.1,x:-1.4,z:-.5},{t:1.6,x:-.3,z:-1.2}]),
+        track('R_UPPERARM',[{t:0,x:.3,z:1.2},{t:.3,x:1.4,z:.5},{t:1.1,x:1.4,z:.5},{t:1.6,x:.3,z:1.2}]),
+        track('L_FOREARM',[{t:0,x:.2},{t:.3,x:-.8},{t:1.1,x:-.8},{t:1.6,x:.2}]),
+        track('R_FOREARM',[{t:0,x:-.2},{t:.3,x:.8},{t:1.1,x:.8},{t:1.6,x:-.2}]),
+        track('HEAD',[{t:0,x:-.08,y:.05},{t:.3,x:-.18,y:-.12},{t:1.1,x:-.18,y:-.12},{t:1.6,x:-.08,y:.05}]),
+        track('SPINE1',[{t:0,x:-.08},{t:.3,x:.05},{t:1.1,x:.05},{t:1.6,x:-.08}]),
+        track('JAW',[{t:0,z:0},{t:.3,z:.28},{t:1.1,z:.28},{t:1.6,z:0}])
+    ],THREE.LoopOnce);
+
+    // ─── LAUGH: a relaxed lean, shoulder pulses, and a settling breath ───
+    // Small, deliberate motions read as a human laugh; rapid head jitter does not.
+    clip('laugh',2.8,[
+        track('HIP',[{t:0,x:0,z:0},{t:.35,x:.035,z:.025},{t:.8,x:.02,z:-.018},{t:1.25,x:.04,z:.02},{t:1.7,x:.018,z:-.014},{t:2.2,x:.03,z:.012},{t:2.8,x:0,z:0}]),
+        track('SPINE1',[{t:0,x:-.07,z:0},{t:.35,x:.075,z:.018},{t:.8,x:.035,z:-.014},{t:1.25,x:.085,z:.016},{t:1.7,x:.04,z:-.012},{t:2.2,x:.065,z:.01},{t:2.8,x:-.07,z:0}]),
+        track('NECK',[{t:0,x:0},{t:.35,x:.055},{t:.8,x:.02},{t:1.25,x:.06},{t:1.7,x:.025},{t:2.2,x:.045},{t:2.8,x:0}]),
+        track('HEAD',[{t:0,x:.015,y:0},{t:.35,x:.09,y:-.045},{t:.8,x:.045,y:.025},{t:1.25,x:.10,y:-.035},{t:1.7,x:.055,y:.02},{t:2.2,x:.075,y:-.02},{t:2.8,x:.015,y:0}]),
+        track('L_UPPERARM',[{t:0,x:.08,z:ZL},{t:.35,x:-.16,z:ZL+.12},{t:.8,x:-.08,z:ZL+.08},{t:1.25,x:-.20,z:ZL+.13},{t:1.7,x:-.10,z:ZL+.08},{t:2.2,x:-.14,z:ZL+.1},{t:2.8,x:.08,z:ZL}]),
+        track('R_UPPERARM',[{t:0,x:-.08,z:ZR},{t:.35,x:.16,z:ZR-.12},{t:.8,x:.08,z:ZR-.08},{t:1.25,x:.20,z:ZR-.13},{t:1.7,x:.10,z:ZR-.08},{t:2.2,x:.14,z:ZR-.1},{t:2.8,x:-.08,z:ZR}]),
+        track('L_FOREARM',[{t:0,x:.15},{t:.35,x:.42},{t:.8,x:.28},{t:1.25,x:.48},{t:1.7,x:.32},{t:2.2,x:.38},{t:2.8,x:.15}]),
+        track('R_FOREARM',[{t:0,x:-.15},{t:.35,x:-.42},{t:.8,x:-.28},{t:1.25,x:-.48},{t:1.7,x:-.32},{t:2.2,x:-.38},{t:2.8,x:-.15}])
+    ],THREE.LoopOnce);
+
+    // ─── JUMP: crouch + explode + land ───
+    clip('jump',1.2,[
+        track('L_THIGH',[{t:0,x:-.1},{t:.2,x:.8},{t:.4,x:1.2},{t:.6,x:.3},{t:.8,x:-.6},{t:1,x:-.3},{t:1.2,x:-.1}]),
+        track('R_THIGH',[{t:0,x:-.1},{t:.2,x:.8},{t:.4,x:1.2},{t:.6,x:.3},{t:.8,x:-.6},{t:1,x:-.3},{t:1.2,x:-.1}]),
+        track('L_CALF',[{t:0,x:.1},{t:.2,x:.6},{t:.4,x:1.3},{t:.6,x:.5},{t:.8,x:-.3},{t:1,x:.05},{t:1.2,x:.1}]),
+        track('R_CALF',[{t:0,x:.1},{t:.2,x:.6},{t:.4,x:1.3},{t:.6,x:.5},{t:.8,x:-.3},{t:1,x:.05},{t:1.2,x:.1}]),
+        track('L_UPPERARM',[{t:0,x:.1,z:ZL},{t:.4,x:-1.2,z:-1.2},{t:.8,x:.2,z:ZL},{t:1.2,x:.1,z:ZL}]),
+        track('R_UPPERARM',[{t:0,x:-.1,z:ZR},{t:.4,x:1.2,z:1.2},{t:.8,x:-.2,z:ZR},{t:1.2,x:-.1,z:ZR}]),
+        track('SPINE1',[{t:0,x:-.08},{t:.4,x:-.2},{t:.8,x:0},{t:1.2,x:-.08}])
+    ],THREE.LoopOnce);
+
+    // ─── DANCE: full-body groove ───
+    clip('dance',2.4,[
+        track('HIP',[{t:0,z:.2,y:.06},{t:.6,z:-.2,y:.08},{t:1.2,z:.2,y:.06},{t:1.8,z:-.2,y:.08},{t:2.4,z:.2,y:.06}]),
+        track('SPINE1',[{t:0,x:.08,z:-.15},{t:.6,x:.1,z:.15},{t:1.2,x:.08,z:-.15},{t:1.8,x:.1,z:.15},{t:2.4,x:.08,z:-.15}]),
+        track('L_THIGH',[{t:0,x:.2},{t:.6,x:-.3},{t:1.2,x:.2},{t:1.8,x:-.3},{t:2.4,x:.2}]),
+        track('R_THIGH',[{t:0,x:-.3},{t:.6,x:.2},{t:1.2,x:-.3},{t:1.8,x:.2},{t:2.4,x:-.3}]),
+        track('L_UPPERARM',[{t:0,x:-.4,z:-1.2},{t:.6,x:.3,z:-1.1},{t:1.2,x:-.4,z:-1.2},{t:1.8,x:.3,z:-1.1},{t:2.4,x:-.4,z:-1.2}]),
+        track('R_UPPERARM',[{t:0,x:.3,z:1.1},{t:.6,x:-.4,z:1.2},{t:1.2,x:.3,z:1.1},{t:1.8,x:-.4,z:1.2},{t:2.4,x:.3,z:1.1}]),
+        track('HEAD',[{t:0,y:.1,z:-.12},{t:.6,y:-.08,z:.12},{t:1.2,y:.1,z:-.12},{t:1.8,y:-.08,z:.12},{t:2.4,y:.1,z:-.12}])
+    ]);
+
+    // ─── WORK: rhythmic labor ───
+    clip('work',1.6,[
+        track('SPINE1',[{t:0,x:.05},{t:.4,x:.2},{t:.8,x:.08},{t:1.2,x:.18},{t:1.6,x:.05}]),
+        track('L_UPPERARM',[{t:0,x:.1,z:ZL},{t:.4,x:-.5,z:-1.4},{t:.8,x:.1,z:ZL},{t:1.2,x:-.5,z:-1.4},{t:1.6,x:.1,z:ZL}]),
+        track('L_FOREARM',[{t:0,x:.2},{t:.4,x:.9},{t:.8,x:.2},{t:1.2,x:.9},{t:1.6,x:.2}]),
+        track('R_UPPERARM',[{t:0,x:-.1,z:ZR},{t:.4,x:.5,z:1.4},{t:.8,x:-.1,z:ZR},{t:1.2,x:.5,z:1.4},{t:1.6,x:-.1,z:ZR}]),
+        track('R_FOREARM',[{t:0,x:-.2},{t:.4,x:-.9},{t:.8,x:-.2},{t:1.2,x:-.9},{t:1.6,x:-.2}])
+    ]);
+
+    // ─── SIT: bend knees + lean forward ───
+    clip('sit',3,[
+        track('L_THIGH',[{t:0,x:.1},{t:1.5,x:1.3},{t:3,x:.1}]),
+        track('R_THIGH',[{t:0,x:.1},{t:1.5,x:1.3},{t:3,x:.1}]),
+        track('L_CALF',[{t:0,x:.05},{t:1.5,x:-1.1},{t:3,x:.05}]),
+        track('R_CALF',[{t:0,x:.05},{t:1.5,x:-1.1},{t:3,x:.05}]),
+        track('SPINE1',[{t:0,x:-.08},{t:1.5,x:.4},{t:3,x:-.08}]),
+        track('HEAD',[{t:0,y:.03},{t:1.5,x:.15,y:-.05},{t:3,y:.03}]),
+        track('L_UPPERARM',[{t:0,z:ZL},{t:3,z:ZL}]),
+        track('R_UPPERARM',[{t:0,z:ZR},{t:3,z:ZR}])
+    ],THREE.LoopOnce);
+
+    // ─── STAND: rise from sitting ───
+    clip('stand',3,[
+        track('L_THIGH',[{t:0,x:1.3},{t:1.5,x:.1},{t:3,x:.1}]),
+        track('R_THIGH',[{t:0,x:1.3},{t:1.5,x:.1},{t:3,x:.1}]),
+        track('L_CALF',[{t:0,x:-1.1},{t:1.5,x:.05},{t:3,x:.05}]),
+        track('R_CALF',[{t:0,x:-1.1},{t:1.5,x:.05},{t:3,x:.05}]),
+        track('SPINE1',[{t:0,x:.4},{t:1.5,x:-.08},{t:3,x:-.08}]),
+        track('HEAD',[{t:0,x:.15,y:-.05},{t:1.5,y:.03},{t:3,y:.03}]),
+        track('L_UPPERARM',[{t:0,z:ZL},{t:3,z:ZL}]),
+        track('R_UPPERARM',[{t:0,z:ZR},{t:3,z:ZR}])
+    ],THREE.LoopOnce);
+
+    // ─── THINK: hand on chin + slow sway ───
+    clip('think',3.2,[
+        track('R_UPPERARM',[{t:0,x:.2,z:ZR},{t:.8,x:-.6,z:1.2},{t:1.6,x:-.5,z:1.25},{t:2.4,x:-.6,z:1.2},{t:3.2,x:.2,z:ZR}]),
+        track('R_FOREARM',[{t:0,x:-.3},{t:.8,x:-1},{t:1.6,x:-.95},{t:2.4,x:-1},{t:3.2,x:-.3}]),
+        track('HEAD',[{t:0,y:.04},{t:.8,y:.12},{t:1.6,y:.1},{t:2.4,y:.11},{t:3.2,y:.04}]),
+        track('SPINE1',[{t:0,x:-.08},{t:1.6,x:.03},{t:3.2,x:-.08}]),
+        track('L_UPPERARM',[{t:0,z:ZL},{t:3.2,z:ZL}])
+    ]);
+
+    // ─── CARRY: both arms forward holding weight ───
+    clip('carry',2.6,[
+        track('L_UPPERARM',[{t:0,x:-.2,z:-1.3},{t:1.3,x:-.3,z:-1.25},{t:2.6,x:-.2,z:-1.3}]),
+        track('L_FOREARM',[{t:0,x:.4},{t:1.3,x:.5},{t:2.6,x:.4}]),
+        track('R_UPPERARM',[{t:0,x:.2,z:1.3},{t:1.3,x:.3,z:1.25},{t:2.6,x:.2,z:1.3}]),
+        track('R_FOREARM',[{t:0,x:-.4},{t:1.3,x:-.5},{t:2.6,x:-.4}]),
+        track('SPINE1',[{t:0,x:-.08},{t:1.3,x:-.05},{t:2.6,x:-.08}]),
+        track('HEAD',[{t:0,y:.03},{t:1.3,y:.02},{t:2.6,y:.03}])
+    ]);
+
+    // ─── SLEEP: full relaxation ───
+    clip('sleep',4,[
+        track('SPINE1',[{t:0,x:.25},{t:2,x:.3},{t:4,x:.25}]),
+        track('HEAD',[{t:0,x:.2,y:-.1},{t:2,x:.25,y:-.12},{t:4,x:.2,y:-.1}]),
+        track('NECK',[{t:0,x:.15},{t:2,x:.2},{t:4,x:.15}]),
+        track('L_UPPERARM',[{t:0,x:.4,z:-1.4},{t:2,x:.5,z:-1.35},{t:4,x:.4,z:-1.4}]),
+        track('L_FOREARM',[{t:0,x:.7},{t:2,x:.8},{t:4,x:.7}]),
+        track('R_UPPERARM',[{t:0,x:-.4,z:1.4},{t:2,x:-.5,z:1.35},{t:4,x:-.4,z:1.4}]),
+        track('R_FOREARM',[{t:0,x:-.7},{t:2,x:-.8},{t:4,x:-.7}]),
+        track('L_THIGH',[{t:0,x:.15},{t:2,x:.2},{t:4,x:.15}]),
+        track('R_THIGH',[{t:0,x:.15},{t:2,x:.2},{t:4,x:.15}]),
+        track('HIP',[{t:0,y:-.08},{t:2,y:-.1},{t:4,y:-.08}])
+    ],THREE.LoopRepeat);
+
+    if(BLU_BONES.HIP==="Hips"){
+        const armRestClip=new THREE.AnimationClip("expressive_arm_rest",1,[
+            expressiveArmRest('L_UPPERARM',Math.PI/2),
+            expressiveArmRest('R_UPPERARM',-Math.PI/2)
+        ].filter(Boolean));
+        expressiveArmRestAction=mixer.clipAction(armRestClip);
+        expressiveArmRestAction.setLoop(THREE.LoopRepeat,Infinity);
+        expressiveArmRestAction.play();
+    }
+
+    const jaw=findBone(BLU_BONES.JAW) || bones.find(b=>/jawroot|jaw/i.test(b.name));
+    if(jaw){ bluJawBone=jaw; bluJawRest=jaw.quaternion.clone(); console.log('Blu jaw:',jaw.name); }
+
+    // Discover eye and eyelid bones dynamically
+    bones.forEach(b=>{
+        const n=b.name.toLowerCase();
+        if(/eyelash|cornea|iris|pupil/.test(n)) return;
+        if(!bluEyeL && /eye.*_?l|l_?eye/.test(n)) { bluEyeL=b; bluEyeRestL=b.quaternion.clone(); console.log('Blu eye L:',b.name); }
+        if(!bluEyeR && /eye.*_?r|r_?eye/.test(n)) { bluEyeR=b; bluEyeRestR=b.quaternion.clone(); console.log('Blu eye R:',b.name); }
+        if(!bluEyelidUpL && /upper.*eyelid.*l|l.*upper.*eyelid|l.*eyelid.*upper/.test(n)) { bluEyelidUpL=b; bluEyelidUpRestL=b.quaternion.clone(); console.log('Blu eyelid UL:',b.name); }
+        if(!bluEyelidUpR && /upper.*eyelid.*r|r.*upper.*eyelid|r.*eyelid.*upper/.test(n)) { bluEyelidUpR=b; bluEyelidUpRestR=b.quaternion.clone(); console.log('Blu eyelid UR:',b.name); }
+    });
+
+    console.log('Blu human animations loaded:',Object.keys(actions));
+}
+
+function findAnimation(
+    keywords
+){
+
+    const names=
+    Object.keys(actions);
+
+    for(
+        const keyword of keywords
+    ){
+
+        const result=
+        names.find(
+            name=>
+            name.toLowerCase().includes(
+                keyword.toLowerCase()
+            )
+        );
+
+        if(result){
+            return result;
+        }
+    }
+
+    return null;
+}
+
+
+function playAnimation(
+    type
+){
+
+    if(!mixer){
+        return;
+    }
+
+    /* The matched Rocketbox set contains only these deliberate human motions.
+       Never fall through to the legacy procedural clips for this avatar. */
+    if(usingRocketbox){
+        const nativeMap={
+            idle:"native_idle", walk:"native_walk", run:"native_run",
+            laugh:"native_laugh", talk:"native_idle",
+            happy:"native_idle", sad:"native_idle", angry:"native_idle",
+            surprised:"native_idle", surprise:"native_idle", wave:"native_idle",
+            dance:"native_idle", jump:"native_idle", cry:"native_idle",
+            think:"native_idle", carry:"native_idle", sleep:"native_idle",
+            sit:"native_idle", stand:"native_idle"
+        };
+        const nativeName=nativeMap[type] || "native_idle";
+        if(!nativeMotionReady || !actions[nativeName]){
+            pendingAnimationType=type;
+            return;
+        }
+        const next=actions[nativeName];
+        if(activeAction===next) return;
+        if(activeAction) activeAction.fadeOut(.18);
+        next.reset().fadeIn(.18).play();
+        activeAction=next;
+        proceduralState.type=type;
+        proceduralState.time=0;
+        return;
+    }
+
+    let keywords=[];
+
+    if(type==="idle"){
+        keywords=[
+            "idle",
+            "stand",
+            "breath",
+            "rest"
+        ];
+    }
+
+    else if(type==="walk"){
+        keywords=[
+            "walk",
+            "walking",
+            "locomotion",
+            "move"
+        ];
+    }
+
+    else if(type==="run"){
+        keywords=[
+            "run",
+            "running",
+            "sprint"
+        ];
+    }
+
+    else if(type==="laugh"){
+        keywords=[
+            "laugh",
+            "laughter",
+            "joy"
+        ];
+    }
+
+    else if(type==="cry"){
+        keywords=[
+            "cry",
+            "crying",
+            "sad"
+        ];
+    }
+
+    else if(type==="angry"){
+        keywords=[
+            "angry",
+            "rage",
+            "mad"
+        ];
+    }
+
+    else if(type==="wave"){
+        keywords=[
+            "wave",
+            "waving",
+            "hello"
+        ];
+    }
+
+    else if(type==="talk"){
+        keywords=[
+            "talk",
+            "talking",
+            "speak",
+            "conversation"
+        ];
+    }
+
+    else if(type==="dance"){
+        keywords=[
+            "dance",
+            "dancing"
+        ];
+    }
+
+    else if(type==="jump"){
+        keywords=[
+            "jump",
+            "jumping"
+        ];
+    }
+
+    else if(type==="sit"){
+        keywords=[
+            "sit",
+            "sitting",
+            "sitdown"
+        ];
+    }
+
+    else if(type==="stand"){
+        keywords=[
+            "stand",
+            "standing",
+            "getup"
+        ];
+    }
+
+    else if(type==="sad"){
+        keywords=[
+            "sad",
+            "cry",
+            "crying",
+            "down"
+        ];
+    }
+
+    else if(type==="sleep"){
+        keywords=[
+            "sleep",
+            "sleeping",
+            "rest",
+            "nap"
+        ];
+    }
+
+    else if(type==="think"){
+        keywords=[
+            "think",
+            "thinking",
+            "ponder"
+        ];
+    }
+
+    else if(type==="carry"){
+        keywords=[
+            "carry",
+            "carrying",
+            "hold",
+            "lifting"
+        ];
+    }
+
+    else{
+        keywords=[
+            type
+        ];
+    }
+
+
+    /* Prefer the downloaded walk authored for the replacement avatar. */
+    let found=(type==="walk" && actions.walk_native)
+        ? "walk_native"
+        : findAnimation(
+            keywords
+        );
+
+    if(!found && usingRocketbox && !nativeMotionReady){
+        pendingAnimationType=type;
+        return;
+    }
+
+
+    if(!found){
+
+        if(usingRocketbox){
+            found=findAnimation(["native_idle"]);
+        }
+
+    }
+
+    if(!found){
+
+        if(type!=="idle"){
+
+            found=
+            findAnimation([
+                "idle",
+                "stand",
+                "breath"
+            ]);
+
+        }
+    }
+
+
+    if(!found){
+
+        /*
+         * Fall back to procedural animation
+         * when GLB has no real animations.
+         */
+
+        fallbackAnimation(type);
+
+        return;
+    }
+
+
+    const next=
+    actions[found];
+
+
+    if(activeAction===next){
+        return;
+    }
+
+
+    if(activeAction){
+        activeAction.fadeOut(
+            .25
+        );
+    }
+
+
+    next.reset();
+    next.fadeIn(.18);
+    next.play();
+    activeAction=next;
+
+    /* Keep a natural lowered arm pose for idle, speech and emotions.  Native
+       walking owns the arms itself, so it temporarily takes priority. */
+    if(expressiveArmRestAction){
+        if(found==="walk_native"){
+            expressiveArmRestAction.fadeOut(.12);
+        }
+        else{
+            expressiveArmRestAction.reset().fadeIn(.12).play();
+        }
+    }
+
+    // One-shot gestures/emotions return to the appropriate locomotion state.
+    const oneShot = ["wave","jump","happy","sad","cry","angry","surprised","laugh"].includes(type);
+    if(oneShot){
+        const duration = next.getClip().duration * 1000;
+        clearTimeout(playAnimation.returnTimer);
+        playAnimation.returnTimer=setTimeout(()=>{
+            if(activeAction===next){
+                const returnAnim = target ? (movementSpeed >= 2.5 ? "run" : "walk") : "idle";
+                playAnimation(returnAnim);
+            }
+        }, Math.max(250,duration+120));
+    }
+
+
+    /*
+     * Still set procedural params to blend
+     * with real animations.
+     */
+
+    proceduralState.type=type;
+
+    proceduralState.time=0;
+}
+
+
+/*
+ * Fallback to procedural when no real animations exist.
+ */
+
+function fallbackAnimation(
+    type
+){
+
+    const fallbackMap={
+        run:["walk","idle"],
+        jump:["happy","idle"],
+        cry:["sad","talk","idle"],
+        surprise:["surprised","happy","idle"],
+        surprised:["surprised","happy","idle"],
+        angry:["angry","talk","idle"],
+        laugh:["laugh","happy","talk","idle"],
+        wave:["wave","happy","idle"],
+        dance:["dance","happy","idle"],
+        talk:["talk","idle"],
+        happy:["happy","talk","idle"],
+        sad:["sad","talk","idle"],
+        walk:["walk","idle"],
+        idle:["idle"]
+    };
+
+    const choices=fallbackMap[type]||["idle"];
+
+    for(const candidate of choices){
+        const found=findAnimation([candidate]);
+        if(found){
+            const next=actions[found];
+            if(activeAction!==next){
+                if(activeAction) activeAction.fadeOut(.2);
+                next.reset().fadeIn(.2).play();
+                activeAction=next;
+            }
+            proceduralState.type=type;
+            proceduralState.time=0;
+            return;
+        }
+    }
+
+    setProceduralAnimation(type);
+}
+
+
+/* =========================================================
+   PROCEDURAL ANIMATION SYSTEM
+   (Fake body movement when GLB has no real animations)
+========================================================= */
+
+let proceduralState={
+    type:"idle",
+    time:0,
+    intensity:1,
+    bob:0,
+    sway:0,
+    tilt:0,
+    shakeX:0,
+    shakeZ:0,
+    spin:0,
+    yOffset:0
+};
+
+let bluOriginalY=0;
+
+let bluMaterial=null;
+
+let bluMesh=null;
+
+
+/* =========================================================
+   JOINT ANIMATION SYSTEM
+   Animates individual limbs via joint hierarchy.
+========================================================= */
+
+let jointAnimTime=0;
+
+let jointAnimType="idle";
+
+let hasRealAnimations=false;
+
+
+function initProcedural(){
+
+    if(!bluModel){
+        return;
+    }
+
+    hasRealAnimations=
+    Object.keys(actions).length>0;
+
+    if(window.__bluMesh){
+
+        window.__bluMesh.traverse(
+            child=>{
+
+                if(
+                    child.isMesh &&
+                    !bluMaterial
+                ){
+                    bluMaterial=
+                    child.material;
+                }
+
+            }
+        );
+    }
+
+    else{
+
+        bluMesh=bluModel;
+
+        bluModel.traverse(
+            child=>{
+
+                if(
+                    child.isMesh &&
+                    !bluMaterial
+                ){
+                    bluMaterial=
+                    child.material;
+                }
+
+            }
+        );
+    }
+
+    bluOriginalY=0;
+}
+
+
+function setProceduralAnimation(type){
+
+    jointAnimType=type;
+    jointAnimTime=0;
+
+    if(hasRealAnimations){
+        return;
+    }
+
+    if(Object.keys(bluJoints).length===0){
+        return;
+    }
+
+    /* Reset all joints. */
+    for(const key in bluJoints){
+        bluJointTargets[key]={x:0,y:0,z:0};
+        bluJoints[key].rotation.set(0,0,0);
+    }
+
+    /* Initial pose per type. */
+    switch(type){
+        case"idle":
+            bluJointTargets.leftUpperArm={x:.12,z:.08};
+            bluJointTargets.rightUpperArm={x:-.12,z:-.08};
+            bluJointTargets.leftElbow={x:.2};
+            bluJointTargets.rightElbow={x:-.2};
+            break;
+        case"talk":
+            bluJointTargets.rightUpperArm={x:-.4,z:-.15};
+            bluJointTargets.rightElbow={x:-.6};
+            bluJointTargets.neck={x:.05};
+            break;
+        case"happy":
+            bluJointTargets.leftUpperArm={x:-.3,z:.2};
+            bluJointTargets.rightUpperArm={x:.3,z:-.2};
+            bluJointTargets.leftElbow={x:.5};
+            bluJointTargets.rightElbow={x:-.5};
+            bluJointTargets.spine={x:-.05};
+            break;
+        case"laugh":
+            bluJointTargets.leftUpperArm={x:.2,z:.1};
+            bluJointTargets.rightUpperArm={x:-.2,z:-.1};
+            bluJointTargets.neck={x:-.1};
+            break;
+        case"sad": case"cry":
+            bluJointTargets.leftUpperArm={x:.4,z:.15};
+            bluJointTargets.rightUpperArm={x:-.4,z:-.15};
+            bluJointTargets.leftElbow={x:.3};
+            bluJointTargets.rightElbow={x:-.3};
+            bluJointTargets.neck={x:.2};
+            bluJointTargets.spine={x:.08};
+            bluJointTargets.chest={x:.05};
+            bluJointTargets.head={x:.15};
+            break;
+        case"angry":
+            bluJointTargets.leftUpperArm={x:.2,z:.08};
+            bluJointTargets.rightUpperArm={x:-.2,z:-.08};
+            bluJointTargets.leftElbow={x:.5};
+            bluJointTargets.rightElbow={x:-.5};
+            bluJointTargets.neck={x:-.1};
+            bluJointTargets.spine={x:-.12};
+            bluJointTargets.head={x:-.08};
+            break;
+        case"surprise": case"surprised":
+            bluJointTargets.leftUpperArm={x:-.8,z:.15};
+            bluJointTargets.rightUpperArm={x:.8,z:-.15};
+            bluJointTargets.leftElbow={x:.3};
+            bluJointTargets.rightElbow={x:-.3};
+            bluJointTargets.neck={x:-.12};
+            bluJointTargets.spine={x:.06};
+            bluJointTargets.head={x:-.1};
+            break;
+        case"wave":
+            bluJointTargets.rightUpperArm={x:.1,z:-.2};
+            bluJointTargets.rightElbow={x:-1.2};
+            bluJointTargets.leftUpperArm={x:.12,z:.08};
+            break;
+        case"jump":
+            bluJointTargets.leftThigh={x:.3};
+            bluJointTargets.rightThigh={x:.3};
+            bluJointTargets.leftKnee={x:.6};
+            bluJointTargets.rightKnee={x:.6};
+            bluJointTargets.leftUpperArm={x:-.3,z:.15};
+            bluJointTargets.rightUpperArm={x:.3,z:-.15};
+            break;
+    }
+
+}
+
+
+function computeJointPose(type,t){
+
+    const pose={};
+    const keys=Object.keys(bluJoints);
+    for(const k of keys) pose[k]={x:0,y:0,z:0};
+
+    if(type==="idle"){
+        pose.spine.x=Math.sin(t*.8)*.015;
+        pose.chest.x=Math.sin(t*.8+.5)*.01;
+        pose.head.y=Math.sin(t*.3)*.04;
+        pose.neck.x=Math.sin(t*.4)*.01;
+        pose.leftUpperArm={x:.12,z:.08};
+        pose.rightUpperArm={x:-.12,z:-.08};
+        pose.leftElbow={x:.2}; pose.rightElbow={x:-.2};
+    }
+
+    else if(type==="walk"){
+        const ph=Math.sin(t*5);
+        const ap=Math.sin(t*5+Math.PI);
+        pose.leftThigh={x:ph*.35,z:0};
+        pose.leftKnee={x:Math.abs(Math.sin(t*5-.5))*.2};
+        pose.rightThigh={x:-ph*.35,z:0};
+        pose.rightKnee={x:Math.abs(Math.sin(t*5+.5))*.2};
+        pose.leftUpperArm={x:ap*.2+.05,z:.05};
+        pose.rightUpperArm={x:-ap*.2-.05,z:-.05};
+        pose.spine={x:-.06};
+        pose.chest={x:.02};
+        pose.head={y:Math.sin(t*2.5)*.03};
+    }
+
+    else if(type==="run"){
+        const ph=Math.sin(t*8);
+        const ap=Math.sin(t*8+Math.PI);
+        pose.leftThigh={x:ph*.55,z:ph*.06};
+        pose.leftKnee={x:Math.max(0,Math.sin(t*8-.3))*.3};
+        pose.rightThigh={x:-ph*.55,z:-ph*.06};
+        pose.rightKnee={x:Math.max(0,Math.sin(t*8+.3))*.3};
+        pose.leftUpperArm={x:ap*.35+.1,z:.08};
+        pose.rightUpperArm={x:-ap*.35-.1,z:-.08};
+        pose.spine={x:-.12}; pose.chest={x:-.03};
+        pose.head={y:Math.sin(t*4)*.04};
+    }
+
+    else if(type==="dance"){
+        pose.hips={z:Math.sin(t*3)*.08};
+        pose.spine={x:Math.sin(t*2)*.03,z:Math.sin(t*3)*.04};
+        pose.leftShoulder={z:.1}; pose.rightShoulder={z:-.1};
+        pose.leftUpperArm={x:-.4+Math.sin(t*2)*.2,z:.3};
+        pose.rightUpperArm={x:.4+Math.sin(t*2+.5)*.2,z:-.3};
+        pose.leftElbow={x:.8+Math.sin(t*3)*.2};
+        pose.rightElbow={x:-.8+Math.sin(t*3+.5)*.2};
+        pose.neck={x:Math.sin(t*2)*.04};
+        pose.head={y:Math.sin(t*1.5)*.06};
+        pose.leftThigh={z:Math.sin(t*3)*.05};
+        pose.rightThigh={z:-Math.sin(t*3)*.05};
+    }
+
+    else if(type==="laugh"){
+        const sh=Math.sin(t*12)*.04+Math.sin(t*18)*.02;
+        pose.spine={x:sh,z:Math.sin(t*14)*.03};
+        pose.chest={x:Math.sin(t*10)*.02};
+        pose.neck={x:-.1+Math.sin(t*8)*.02};
+        pose.head={y:Math.sin(t*6)*.04};
+        pose.leftUpperArm={x:.2+Math.sin(t*8)*.03,z:.1};
+        pose.rightUpperArm={x:-.2+Math.sin(t*8)*.03,z:-.1};
+    }
+
+    else if(type==="talk"){
+        pose.neck={x:.05+Math.sin(t*4)*.03};
+        pose.head={y:Math.sin(t*3)*.04};
+        pose.rightUpperArm={x:-.4+Math.sin(t*2)*.05,z:-.15};
+        pose.rightElbow={x:-.6+Math.sin(t*3)*.04};
+        pose.spine={x:Math.sin(t*2.5)*.01};
+    }
+
+    else if(type==="sad"||type==="cry"){
+        pose.leftUpperArm={x:.4,z:.15};
+        pose.rightUpperArm={x:-.4,z:-.15};
+        pose.leftElbow={x:.3}; pose.rightElbow={x:-.3};
+        pose.neck={x:.2+Math.sin(t*2)*.02};
+        pose.spine={x:.08}; pose.chest={x:.05};
+        pose.head={x:.15+Math.sin(t*1.5)*.02,y:Math.sin(t*2)*.03};
+        pose.leftShoulder={z:Math.sin(t*6)*.02};
+        pose.rightShoulder={z:-Math.sin(t*6)*.02};
+    }
+
+    else if(type==="angry"){
+        pose.leftUpperArm={x:.2,z:.08};
+        pose.rightUpperArm={x:-.2,z:-.08};
+        pose.leftElbow={x:.5+Math.sin(t*8)*.03};
+        pose.rightElbow={x:-.5+Math.sin(t*8)*.03};
+        pose.neck={x:-.1}; pose.spine={x:-.12};
+        pose.head={x:-.08,y:Math.sin(t*4)*.03};
+        pose.hips={x:Math.sin(t*6)*.02};
+    }
+
+    else if(type==="surprise"||type==="surprised"){
+        pose.leftUpperArm={x:-.8,z:.15};
+        pose.rightUpperArm={x:.8,z:-.15};
+        pose.leftElbow={x:.3}; pose.rightElbow={x:-.3};
+        pose.neck={x:-.12}; pose.spine={x:.06};
+        pose.head={x:-.1,y:Math.sin(t*3)*.04};
+    }
+
+    else if(type==="wave"){
+        pose.rightUpperArm={x:.1+Math.sin(t*2)*.05,z:-.2};
+        pose.rightElbow={x:-1.2+Math.sin(t*4)*.08};
+        pose.leftUpperArm={x:.12,z:.08};
+        pose.leftElbow={x:.2};
+        pose.neck={x:.03};
+        pose.head={y:Math.sin(t*2)*.05};
+    }
+
+    else if(type==="jump"){
+        const jp=Math.max(0,Math.sin(t*4));
+        pose.leftThigh={x:jp*.5};
+        pose.rightThigh={x:jp*.5};
+        pose.leftKnee={x:jp*.8};
+        pose.rightKnee={x:jp*.8};
+        pose.leftUpperArm={x:-jp*.5,z:jp*.2};
+        pose.rightUpperArm={x:jp*.5,z:-jp*.2};
+    }
+
+    else if(type==="happy"){
+        pose.spine={x:-.05};
+        pose.neck={x:Math.sin(t*3)*.02};
+        pose.head={y:Math.sin(t*2)*.04};
+        pose.leftUpperArm={x:-.3+Math.sin(t*3)*.1,z:.2};
+        pose.rightUpperArm={x:.3+Math.sin(t*3+.5)*.1,z:-.2};
+        pose.leftElbow={x:.5}; pose.rightElbow={x:-.5};
+    }
+
+    return pose;
+}
+
+
+let faceMeshes=[];
+let bluJawBone=null;
+let bluJawRest=null;
+let mouthAnimTime=0;
+
+let bluEyeL=null;
+let bluEyeR=null;
+let bluEyelidUpL=null;
+let bluEyelidUpR=null;
+let bluEyelidLowL=null;
+let bluEyelidLowR=null;
+let bluEyeRestL=null;
+let bluEyeRestR=null;
+let bluEyelidUpRestL=null;
+let bluEyelidUpRestR=null;
+
+let blinkTimer=0;
+let blinkInterval=3.5;
+let blinkPhase=0;
+let isBlinking=false;
+
+let facialAnimTime=0;
+
+function morphTo(mesh,name,target,rate=.28){
+    const index=mesh.morphTargetDictionary && mesh.morphTargetDictionary[name];
+    if(index===undefined) return;
+    mesh.morphTargetInfluences[index]=THREE.MathUtils.lerp(
+        mesh.morphTargetInfluences[index],target,rate
+    );
+}
+
+/* Drive the replacement avatar's ARKit/Oculus face rig.  This is real mesh
+   deformation (jaw, lips and blink shapes), not a bone rotation approximation. */
+function updateExpressiveFace(mouthOpen,blinkAmt){
+    if(!faceMeshes.length) return;
+
+    let viseme="viseme_sil";
+    if(window.__bluSpeakActive && activeSpeechText){
+        const elapsed=Math.max(0,performance.now()-speechStartedAt);
+        const index=Math.min(
+            activeSpeechText.length-1,
+            Math.max(speechCharIndex,Math.floor(elapsed/Math.max(1,speechEstimatedMs)*activeSpeechText.length))
+        );
+        const letter=(activeSpeechText[index]||" ").toLowerCase();
+        if(/[a]/.test(letter)) viseme="viseme_aa";
+        else if(/[e]/.test(letter)) viseme="viseme_E";
+        else if(/[i,y]/.test(letter)) viseme="viseme_I";
+        else if(/[o]/.test(letter)) viseme="viseme_O";
+        else if(/[u,w]/.test(letter)) viseme="viseme_U";
+        else if(/[m,b,p]/.test(letter)) viseme="viseme_PP";
+        else if(/[f,v]/.test(letter)) viseme="viseme_FF";
+        else if(/[s,z]/.test(letter)) viseme="viseme_SS";
+        else if(/[t,d,n,l]/.test(letter)) viseme="viseme_DD";
+    }
+
+    for(const mesh of faceMeshes){
+        morphTo(mesh,"eyeBlinkLeft",blinkAmt,.42);
+        morphTo(mesh,"eyeBlinkRight",blinkAmt,.42);
+        morphTo(mesh,"jawOpen",mouthOpen,.35);
+        morphTo(mesh,"mouthClose",window.__bluSpeakActive ? 0 : .18,.22);
+        morphTo(mesh,"mouthFunnel",viseme==="viseme_O" || viseme==="viseme_U" ? mouthOpen*.45 : 0,.25);
+        for(const name of ["viseme_aa","viseme_E","viseme_I","viseme_O","viseme_U","viseme_PP","viseme_FF","viseme_SS","viseme_DD","viseme_sil"]){
+            morphTo(mesh,name,name===viseme ? (window.__bluSpeakActive ? .78 : 1) : 0,.34);
+        }
+    }
+}
+
+function updateRocketboxFace(mouthOpen,blinkAmt){
+    if(!usingRocketbox || !faceMeshes.length) return;
+    for(const mesh of faceMeshes){
+        const names=Object.keys(mesh.morphTargetDictionary || {});
+        for(const name of names){
+            const lower=name.toLowerCase();
+            if(lower.includes("blink")) morphTo(mesh,name,blinkAmt,.42);
+            else if(lower.includes("jawopen") || lower.includes("mouthopen")) morphTo(mesh,name,mouthOpen,.35);
+            else if(window.__bluSpeakActive && (lower.includes("mouthwide") || lower.includes("mouthfunnel"))){
+                const rounded=/[ouw]/i.test(activeSpeechText[Math.min(activeSpeechText.length-1,speechCharIndex)] || "");
+                morphTo(mesh,name,rounded ? mouthOpen*.42 : 0,.25);
+            }
+        }
+    }
+}
+
+
+/**
+ * updateFacial(dt)
+ * Automatic human-like facial behaviour on the GLB skeleton:
+ *  - Periodic blinking (close upper eyelids every few seconds)
+ *  - Subtle eye gaze drift
+ *  - Natural jaw micro-movement for idle, driven by current speech/emotion
+ */
+function updateFacial(dt){
+
+    facialAnimTime+=dt;
+
+    const hasMixer=!!mixer;
+
+    /*
+     * BLINKING
+     * Every blinkInterval seconds, quickly close & reopen upper eyelids.
+     * Uses eyelid bones if found; otherwise gently squints eyeball bones.
+     */
+
+    blinkTimer+=dt;
+
+    if(blinkTimer>=blinkInterval){
+
+        if(!isBlinking){
+
+            isBlinking=true;
+            blinkTimer=0;
+        }
+    }
+
+    if(isBlinking){
+
+        blinkPhase=Math.min(1,blinkPhase+dt*9);
+
+        if(blinkPhase>=1){
+
+            blinkPhase=0;
+            isBlinking=false;
+
+            /* Next blink a little sooner or later (randomised). */
+            blinkInterval=2.2+Math.random()*3.2;
+        }
+    }
+
+    const blinkAmt=Math.sin(blinkPhase*Math.PI);
+
+    /* Apply to upper eyelids if found. */
+    if(bluEyelidUpL&&bluEyelidUpRestL){
+        const q=bluEyelidUpRestL.clone();
+        q.multiply(new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(blinkAmt*.9,0,0)));
+        bluEyelidUpL.quaternion.copy(q);
+    }
+    if(bluEyelidUpR&&bluEyelidUpRestR){
+        const q=bluEyelidUpRestR.clone();
+        q.multiply(new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(blinkAmt*.9,0,0)));
+        bluEyelidUpR.quaternion.copy(q);
+    }
+
+    /*
+     * EYE GAZE
+     * Slow wandering gaze, plus a tiny "settle" when surprised.
+     */
+
+    if(bluEyeL&&bluEyeR&&bluEyeRestL&&bluEyeRestR){
+
+        const gx=Math.sin(facialAnimTime*.33)*.02;
+        const gy=Math.sin(facialAnimTime*.51)*.02;
+
+        const qL=bluEyeRestL.clone()
+            .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(gy,gx,0)));
+        const qR=bluEyeRestR.clone()
+            .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(gy,gx,0)));
+
+        bluEyeL.quaternion.copy(qL);
+        bluEyeR.quaternion.copy(qR);
+    }
+
+    /*
+     * MOUTH
+     * Blu's Character Creator jaw has a local-Z hinge.  The old local-X
+     * rotation twisted the jaw sideways, and two independent animation
+     * systems then fought over the final pose.  This is the single owner of
+     * the jaw while the page runs.
+     */
+
+    const targetJawOpen=getMouthTarget();
+
+    jawOpenAmount+=
+    (targetJawOpen-jawOpenAmount)*
+    Math.min(1,dt*18);
+
+    /* The new avatar supplies 66 facial blend shapes, including ARKit jaw and
+       Oculus visemes.  Use them whenever available. */
+    updateExpressiveFace(jawOpenAmount,blinkAmt);
+    updateRocketboxFace(jawOpenAmount,blinkAmt);
+
+    /* Retain the jaw-bone route solely for the original Blu fallback. */
+    if(bluJawBone&&bluJawRest && !faceMeshes.length){
+        const q=bluJawRest.clone();
+        q.multiply(new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(0,0,jawOpenAmount*.34,'XYZ')));
+        bluJawBone.quaternion.copy(q);
+    }
+
+    /* Update only works for bones NOT already fully driven by an action. */
+    void hasMixer;
+}
+
+
+/*
+ * A lightweight viseme approximation for the jaw-only GLB.  There are no
+ * facial morph targets in blu.glb, so vowel/consonant timing gives the
+ * strongest readable talking signal without requiring a different model.
+ */
+function getMouthTarget(){
+
+    if(window.__bluSpeakActive){
+
+        const text=activeSpeechText;
+
+        if(!text){
+            return .18;
+        }
+
+        const elapsed=Math.max(0,performance.now()-speechStartedAt);
+        const timedIndex=Math.floor(
+            (elapsed/Math.max(1,speechEstimatedMs))*text.length
+        );
+
+        const index=Math.min(
+            text.length-1,
+            Math.max(speechCharIndex,timedIndex)
+        );
+
+        const char=(text[index]||" ").toLowerCase();
+
+        const shapes={
+            a:.88, e:.60, i:.43, o:.78, u:.56, y:.46,
+            m:.05, b:.05, p:.05,
+            f:.20, v:.20,
+            l:.34, r:.32, w:.38
+        };
+
+        let openness=shapes[char];
+
+        if(openness===undefined){
+            openness=/[.,!?;:]/.test(char)
+                ? .03
+                : /\s/.test(char)
+                ? .10
+                : .27;
+        }
+
+        /* Keep the jaw moving between word-boundary events. */
+        const pulse=.84+.16*Math.sin(elapsed*.019);
+
+        return THREE.MathUtils.clamp(
+            (.12+openness*.78)*pulse,
+            .02,
+            .90
+        );
+    }
+
+    if(activeAction===actions.laugh){
+        const chuckle=.60+.18*Math.sin(facialAnimTime*11)+
+            .08*Math.sin(facialAnimTime*17);
+        return THREE.MathUtils.clamp(chuckle,.25,.88);
+    }
+
+    if(activeAction===actions.surprised){
+        return .68;
+    }
+
+    return 0;
+}
+
+
+function updateProceduralAnimation(
+    dt
+){
+
+    if(
+        !bluMesh ||
+        Object.keys(actions).length>0
+    ){
+
+        return;
+
+    }
+
+    proceduralState.time+=dt;
+
+    const t=
+    proceduralState.time;
+
+    /*
+     * Body bob (up/down) - like breathing/walking.
+     */
+
+    const bobSpeed=
+    proceduralState.type==="run"?12:
+    proceduralState.type==="walk"?8:
+    proceduralState.type==="dance"?5:
+    proceduralState.type==="laugh"?6:
+    proceduralState.type==="talk"?4:
+    proceduralState.type==="angry"?5:
+    3;
+
+    const bob=
+    Math.sin(t*bobSpeed)*
+    proceduralState.bob;
+
+    /*
+     * Body sway (left/right).
+     */
+
+    const swaySpeed=
+    proceduralState.type==="dance"?4:
+    proceduralState.type==="walk"?6:
+    proceduralState.type==="run"?8:
+    proceduralState.type==="wave"?3:
+    2.5;
+
+    const sway=
+    Math.sin(t*swaySpeed+
+           Math.PI/4)*
+    proceduralState.sway;
+
+    /*
+     * Body tilt (forward/back).
+     */
+
+    const tilt=
+    proceduralState.type==="sad"?-.04:
+    proceduralState.type==="cry"?-.04:
+    proceduralState.type==="angry"?.06:
+    proceduralState.type==="surprised"?-.05:
+    proceduralState.type==="laugh"?-.02:
+    proceduralState.tilt;
+
+    /*
+     * Shake (fast vibration).
+     */
+
+    const shakeX=
+    (Math.sin(t*25)*.5+
+     Math.sin(t*37)*.3+
+     Math.sin(t*53)*.2)*
+    proceduralState.shakeX;
+
+    const shakeZ=
+    (Math.sin(t*31)*.5+
+     Math.sin(t*43)*.3+
+     Math.sin(t*59)*.2)*
+    proceduralState.shakeZ;
+
+    /*
+     * Spin (rotation for dance).
+     */
+
+    const spin=
+    proceduralState.type==="dance"
+    ? Math.sin(t*.8)*.06
+    : 0;
+
+    /*
+     * Apply all transforms to the mesh.
+     * The mesh is the direct child of bluRoot.
+     */
+
+    bluMesh.position.x=
+    sway+shakeX;
+
+    bluMesh.position.y=
+    bluOriginalY+
+    bob+
+    proceduralState.yOffset;
+
+    bluMesh.position.z=
+    shakeZ;
+
+    bluMesh.rotation.x=
+    tilt;
+
+    bluMesh.rotation.z=
+    spin;
+
+    /*
+     * Color pulse for emotions (very subtle).
+     */
+
+    if(
+        bluMaterial &&
+        proceduralState.type==="angry"
+    ){
+
+        const pulse=
+        Math.sin(t*4)*.04+.04;
+
+        bluMaterial.emissive=
+        new THREE.Color(
+            pulse*.5,
+            0,
+            0
+        );
+
+        bluMaterial.emissiveIntensity=
+        pulse;
+
+    }
+
+    else if(
+        bluMaterial &&
+        proceduralState.type==="sad"
+    ){
+
+        const pulse=
+        Math.sin(t*2)*.02+.02;
+
+        bluMaterial.emissive=
+        new THREE.Color(
+            0,
+            0,
+            pulse*.3
+        );
+
+        bluMaterial.emissiveIntensity=
+        pulse;
+
+    }
+
+    else if(bluMaterial){
+
+        bluMaterial.emissive=
+        new THREE.Color(0,0,0);
+
+        bluMaterial.emissiveIntensity=0;
+
+    }
+
+}
+
+
+
+
+function prepareFaceMeshes(){
+
+    faceMeshes=[];
+
+    if(!bluModel){
+        return;
+    }
+
+    bluModel.traverse(
+        object=>{
+
+            if(
+                object.isMesh &&
+                object.morphTargetDictionary &&
+                object.morphTargetInfluences
+            ){
+
+                faceMeshes.push(
+                    object
+                );
+
+            }
+
+        }
+    );
+
+    console.log(
+        "FACE MESHES:",
+        faceMeshes.length
+    );
+}
+
+
+function updateMouthAnimation(dt){
+    /* Kept as a compatibility hook; updateFacial owns the real jaw pose. */
+    void dt;
+}
+
+function setFace(
+    type
+){
+
+    for(
+        const mesh of faceMeshes
+    ){
+
+        const dictionary=
+        mesh.morphTargetDictionary;
+
+        const influences=
+        mesh.morphTargetInfluences;
+
+
+        for(
+            const name in dictionary
+        ){
+
+            const lower=
+            name.toLowerCase();
+
+            let value=0;
+
+
+            if(type==="happy"){
+
+                if(
+                    lower.includes("happy") ||
+                    lower.includes("smile") ||
+                    lower.includes("joy")
+                ){
+                    value=1;
+                }
+
+            }
+
+
+            else if(type==="sad"){
+
+                if(
+                    lower.includes("sad") ||
+                    lower.includes("frown") ||
+                    lower.includes("cry")
+                ){
+                    value=1;
+                }
+
+            }
+
+
+            else if(type==="angry"){
+
+                if(
+                    lower.includes("angry") ||
+                    lower.includes("anger") ||
+                    lower.includes("mad")
+                ){
+                    value=1;
+                }
+
+            }
+
+
+            else if(type==="surprised"){
+
+                if(
+                    lower.includes("surprise") ||
+                    lower.includes("shock") ||
+                    lower.includes("openmouth")
+                ){
+                    value=1;
+                }
+
+            }
+
+
+            else if(type==="laugh"){
+
+                if(
+                    lower.includes("laugh") ||
+                    lower.includes("smile") ||
+                    lower.includes("happy")
+                ){
+                    value=1;
+                }
+
+            }
+
+
+            influences[
+                dictionary[name]
+            ]=
+            THREE.MathUtils.lerp(
+                influences[dictionary[name]],
+                value,
+                .15
+            );
+
+        }
+
+    }
+}
+
+
+/* =========================================================
+   EMOTION (ADVANCED)
+========================================================= */
+
+function setEmotion(
+    type,
+    text
+){
+
+    document.getElementById(
+        "emotion"
+    ).textContent=text;
+
+    setFace(type);
+}
+
+
+function setAdvancedEmotion(
+    type,
+    intensity,
+    text
+){
+
+    targetEmotionType=type;
+
+    targetEmotionIntensity=
+    Math.max(.2,Math.min(1,intensity));
+
+    currentEmotionType=type;
+
+    document.getElementById(
+        "emotion"
+    ).textContent=text;
+
+    setFace(type);
+
+    playAnimation(type);
+
+    lastEmotionChange=
+    performance.now();
+
+}
+
+
+function updateEmotionTransition(
+    dt
+){
+
+    if(
+        currentEmotionIntensity !==
+        targetEmotionIntensity
+    ){
+
+        currentEmotionIntensity+=
+        (targetEmotionIntensity-
+         currentEmotionIntensity)*
+        Math.min(1,dt*emotionLerpSpeed);
+
+        if(
+            Math.abs(
+                currentEmotionIntensity-
+                targetEmotionIntensity
+            )<.01
+        ){
+
+            currentEmotionIntensity=
+            targetEmotionIntensity;
+
+        }
+
+        /*
+         * Scale face morphs by intensity.
+         */
+
+        for(
+            const mesh of faceMeshes
+        ){
+
+            const dict=
+            mesh.morphTargetDictionary;
+
+            const inf=
+            mesh.morphTargetInfluences;
+
+            for(
+                const name in dict
+            ){
+
+                const idx=
+                dict[name];
+
+                const lower=
+                name.toLowerCase();
+
+                let base=0;
+
+                if(
+                    targetEmotionType==="happy" &&
+                    (lower.includes("smile") ||
+                     lower.includes("joy"))
+                ){
+                    base=
+                    targetEmotionIntensity;
+                }
+
+                else if(
+                    targetEmotionType==="sad" &&
+                    (lower.includes("sad") ||
+                     lower.includes("frown"))
+                ){
+                    base=
+                    targetEmotionIntensity;
+                }
+
+                else if(
+                    targetEmotionType==="angry" &&
+                    (lower.includes("angry") ||
+                     lower.includes("anger"))
+                ){
+                    base=
+                    targetEmotionIntensity;
+                }
+
+                else if(
+                    targetEmotionType==="surprised" &&
+                    (lower.includes("surprise") ||
+                     lower.includes("openmouth"))
+                ){
+                    base=
+                    targetEmotionIntensity;
+                }
+
+                else if(
+                    targetEmotionType==="laugh" &&
+                    (lower.includes("laugh") ||
+                     lower.includes("smile"))
+                ){
+                    base=
+                    targetEmotionIntensity;
+                }
+
+                inf[idx]=
+                THREE.MathUtils.lerp(
+                    inf[idx],
+                    base,
+                    .12
+                );
+
+            }
+
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+
+/*
+ * The navigation system uses the actual village
+ * geometry.
+ *
+ * Blu can therefore move through gaps in walls.
+ *
+ * A doorway is naturally a walkable gap.
+ *
+ * Walls remain blocked.
+ */
+
+function cellCenter(
+    col,
+    row
+){
+
+    return new THREE.Vector3(
+        navMinX+
+        (col+.5)*NAV_CELL,
+
+        0,
+
+        navMinZ+
+        (row+.5)*NAV_CELL
+    );
+}
+
+
+function worldToCell(
+    x,
+    z
+){
+
+    const col=
+    Math.floor(
+        (x-navMinX)/
+        NAV_CELL
+    );
+
+    const row=
+    Math.floor(
+        (z-navMinZ)/
+        NAV_CELL
+    );
+
+    return {
+        col,
+        row
+    };
+}
+
+
+function cellInside(
+    col,
+    row
+){
+
+    return(
+        col>=0 &&
+        row>=0 &&
+        col<navCols &&
+        row<navRows
+    );
+}
+
+
+/*
+ * Check whether a position has floor.
+ */
+
+function hasGround(
+    x,
+    z
+){
+
+    verticalRaycaster.set(
+        new THREE.Vector3(
+            x,
+            30,
+            z
+        ),
+        new THREE.Vector3(
+            0,
+            -1,
+            0
+        )
+    );
+
+
+    const hits=
+    verticalRaycaster.intersectObjects(
+        navigationMeshes,
+        true
+    );
+
+
+    for(
+        const hit of hits
+    ){
+
+        /*
+         * Accept normal walkable surfaces.
+         */
+
+        if(
+            /* The imported village's roads are placed around y=14.  Roofs
+               are still rejected independently by the close open-sky test. */
+            hit.point.y>-12 &&
+            hit.point.y<16
+        ){
+
+            return true;
+
+        }
+
+    }
+
+
+    return false;
+}
+
+/* A roof/ceiling above this point means it is inside a house or under a
+   covered structure.  Blu's autonomous routes stay outside. */
+function hasOpenSky(x,z){
+    /* Check high enough to catch the village roofs/ceilings. */
+    verticalRaycaster.set(
+        new THREE.Vector3(x,.35,z),
+        new THREE.Vector3(0,1,0)
+    );
+    verticalRaycaster.near=.05;
+    verticalRaycaster.far=18;
+    const hits=verticalRaycaster.intersectObjects(navigationMeshes,true);
+    return !hits.some(hit=>hit.distance>0 && hit.distance<18);
+}
+
+
+/*
+ * Strict outdoor test.
+ * A point must have open sky and must not be enclosed by house walls.
+ */
+function isOutdoorPosition(x,z){
+    if(!hasOpenSky(x,z)){
+        return false;
+    }
+
+    const y=1.25;
+    const probe=5.0;
+    let blocked=0;
+
+    for(const direction of horizontalDirections){
+        horizontalRaycaster.set(
+            new THREE.Vector3(x,y,z),
+            direction
+        );
+
+        const hits=horizontalRaycaster.intersectObjects(
+            navigationMeshes,
+            true
+        );
+
+        if(hits.length && hits[0].distance<probe){
+            blocked++;
+        }
+    }
+
+    /* Three or four nearby walls means Blu is inside a structure. */
+    return blocked<3;
+}
+
+
+/*
+ * Find the nearest genuinely outdoor position.
+ * This is used to pull Blu out if he somehow spawns inside a house.
+ */
+function nearestOutdoorPosition(start){
+    if(!navigationReady || !navGrid.length){
+        return null;
+    }
+
+    const startCell=worldToCell(start.x,start.z);
+
+    for(let radius=0; radius<30; radius++){
+        for(let y=-radius; y<=radius; y++){
+            for(let x=-radius; x<=radius; x++){
+                const col=startCell.col+x;
+                const row=startCell.row+y;
+
+                if(!cellInside(col,row) ||
+                   !navGrid[row] ||
+                   !navGrid[row][col]){
+                    continue;
+                }
+
+                const candidate=cellCenter(col,row);
+
+                if(candidate.distanceTo(start)<0.5){
+                    continue;
+                }
+
+                if(isOutdoorPosition(candidate.x,candidate.z)){
+                    return candidate;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+
+/*
+ * Detect walls / trees / buildings /
+ * fences / objects at human body height.
+ */
+
+function hasHorizontalObstacle(
+    x,
+    z
+){
+
+    const heights=[.75,1.55];
+
+    const probe=.9;
+
+
+    for(
+        const y of heights
+    ){
+
+        for(
+            const direction
+            of horizontalDirections
+        ){
+
+            horizontalRaycaster.set(
+                new THREE.Vector3(
+                    x,
+                    y,
+                    z
+                ),
+                direction
+            );
+
+
+            const hits=
+            horizontalRaycaster.intersectObjects(
+                navigationMeshes,
+                true
+            );
+
+
+            if(
+                hits.length &&
+                hits[0].distance<probe
+            ){
+
+                return true;
+
+            }
+
+        }
+
+    }
+
+
+    return false;
+}
+
+
+function isWalkableCell(
+    col,
+    row
+){
+
+    if(
+        !cellInside(
+            col,
+            row
+        )
+    ){
+        return false;
+    }
+
+
+    const p=
+    cellCenter(
+        col,
+        row
+    );
+
+
+    /* A cell is walkable only when its center AND several points inside the
+       cell are genuinely outdoors.  This is deliberately stricter than the
+       old center-only test: it prevents an A* route from using a cell whose
+       edge overlaps a house/interior. */
+    navigationStats.candidates++;
+
+    const half=NAV_CELL*0.36;
+    const samples=[
+        [0,0],
+        [half,0],[-half,0],[0,half],[0,-half],
+        [half,half],[half,-half],[-half,half],[-half,-half]
+    ];
+
+    for(const [dx,dz] of samples){
+        if(!isOutdoorPosition(p.x+dx,p.z+dz)){
+            return false;
+        }
+    }
+
+    navigationStats.openSky++;
+    navigationStats.clear++;
+    return true;
+}
+
+
+/* =========================================================
+   ROAD START
+========================================================= */
+
+/*
+ * The village GLB does not expose a reliable "road" object name to the
+ * navigation code, so detect road-like cells from the already-built
+ * outdoor navigation grid.
+ *
+ * A road cell normally has a continuous walkable corridor: either the
+ * cells on both sides (left/right) or the cells in front/behind
+ * (up/down) are also walkable.  This keeps Blu from starting in a house
+ * or a tiny isolated patch of ground.
+ */
+function findRoadStartPosition(start){
+
+    if(!navigationReady || !navGrid.length){
+        return null;
+    }
+
+    const startCell=worldToCell(start.x,start.z);
+    let best=null;
+    let bestScore=-Infinity;
+
+    const isOpen=(c,r)=>{
+        return cellInside(c,r) &&
+               navGrid[r] &&
+               navGrid[r][c]===true;
+    };
+
+    for(let row=0; row<navRows; row++){
+
+        for(let col=0; col<navCols; col++){
+
+            if(!isOpen(col,row)){
+                continue;
+            }
+
+            const left=isOpen(col-1,row);
+            const right=isOpen(col+1,row);
+            const up=isOpen(col,row-1);
+            const down=isOpen(col,row+1);
+
+            const horizontalRoad=left && right;
+            const verticalRoad=up && down;
+
+            if(!horizontalRoad && !verticalRoad){
+                continue;
+            }
+
+            /*
+             * Prefer cells with a longer, wider continuous corridor.
+             * Distance is only a secondary preference so Blu starts
+             * reasonably close to his original spawn area.
+             */
+            let neighbors=0;
+            if(left) neighbors++;
+            if(right) neighbors++;
+            if(up) neighbors++;
+            if(down) neighbors++;
+
+            let score=0;
+
+            if(horizontalRoad) score+=12;
+            if(verticalRoad) score+=12;
+
+            score+=neighbors*3;
+
+            if(isOpen(col-2,row)) score+=3;
+            if(isOpen(col+2,row)) score+=3;
+            if(isOpen(col,row-2)) score+=3;
+            if(isOpen(col,row+2)) score+=3;
+
+            const distance=
+                Math.hypot(
+                    col-startCell.col,
+                    row-startCell.row
+                );
+
+            score-=distance*.45;
+
+            if(score>bestScore){
+                bestScore=score;
+                best={
+                    position:cellCenter(col,row),
+                    horizontal:horizontalRoad,
+                    vertical:verticalRoad
+                };
+            }
+        }
+    }
+
+    if(!best){
+        return null;
+    }
+
+    /*
+     * Face along the detected road direction.
+     * This is done after navigation is ready, when the cell coordinates
+     * are known.
+     */
+    best.position.userDataRoadHorizontal=best.horizontal;
+    best.position.userDataRoadVertical=best.vertical;
+
+    return best.position;
+}
+
+
+/* =========================================================
+   BUILD NAVIGATION
+========================================================= */
+
+function buildNavigation(){
+
+    if(!world || navigationReady){
+        return;
+    }
+
+
+    world.updateMatrixWorld(
+        true
+    );
+
+
+    /*
+     * Use actual world bounding box.
+     */
+
+    const box=
+    new THREE.Box3()
+    .setFromObject(
+        world
+    );
+
+
+    /*
+     * Don't let the grid become enormous.
+     */
+
+    const width=
+    Math.min(
+        box.max.x-box.min.x,
+        NAV_SIZE
+    );
+
+    const depth=
+    Math.min(
+        box.max.z-box.min.z,
+        NAV_SIZE
+    );
+
+
+    const navigationCenter=bluRoot
+        ? bluRoot.position
+        : box.getCenter(new THREE.Vector3());
+    navMinX=THREE.MathUtils.clamp(
+        navigationCenter.x-width/2,
+        box.min.x,
+        box.max.x-width
+    );
+    navMinZ=THREE.MathUtils.clamp(
+        navigationCenter.z-depth/2,
+        box.min.z,
+        box.max.z-depth
+    );
+
+
+    navCols=
+    Math.ceil(
+        width/NAV_CELL
+    );
+
+    navRows=
+    Math.ceil(
+        depth/NAV_CELL
+    );
+
+
+    navGrid=Array.from(
+        {length:navRows},
+        ()=>Array(navCols).fill(false)
+    );
+    navigationStats={candidates:0,openSky:0,clear:0};
+
+    let cellIndex=0;
+    const totalCells=navCols*navRows;
+
+    const complete=()=>{
+
+        navigationReady=true;
+
+        const walkableCells=navGrid.flat().filter(Boolean).length;
+        console.log("Navigation grid built:",navCols,navRows,
+            "outdoor cells:",walkableCells,
+            "stats:",JSON.stringify(navigationStats),
+            "safe area:",JSON.stringify({x:navMinX,z:navMinZ,width,depth}));
+
+        /*
+         * START BLU ON A ROAD.
+         *
+         * Road detection is based on continuous walkable cells, so Blu
+         * starts in an outdoor corridor rather than inside a house.
+         * If the map has no corridor-shaped cell, fall back to the nearest
+         * safe outdoor position.
+         */
+        if(bluRoot){
+
+            const originalStart=bluRoot.position.clone();
+            const roadStart=findRoadStartPosition(originalStart);
+
+            if(roadStart){
+                bluRoot.position.x=roadStart.x;
+                bluRoot.position.z=roadStart.z;
+
+                /*
+                 * Face along the detected road direction.
+                 */
+                if(roadStart.userDataRoadHorizontal){
+                    bluRoot.rotation.y=0;
+                }
+                else if(roadStart.userDataRoadVertical){
+                    bluRoot.rotation.y=Math.PI/2;
+                }
+
+                console.log(
+                    "Blu started on a road-like outdoor cell:",
+                    roadStart.x,
+                    roadStart.z
+                );
+            }
+            else if(!isOutdoorPosition(
+                bluRoot.position.x,
+                bluRoot.position.z
+            )){
+                const outside=nearestOutdoorPosition(bluRoot.position);
+
+                if(outside){
+                    bluRoot.position.x=outside.x;
+                    bluRoot.position.z=outside.z;
+                    console.log("Blu was indoors; moved him outside.");
+                }
+            }
+        }
+
+        /* Start autonomous movement only after the road spawn is ready. */
+        requestAnimationFrame(()=>{
+            if(!bluRoot || !bluReady || isConversing || target){
+                return;
+            }
+
+            const destination=randomWalkableDestination();
+
+            if(destination && setDestination(destination,1.35)){
+                currentActivity="walk";
+                activityTimer=THREE.MathUtils.randFloat(4,7);
+                playAnimation("walk");
+                console.log("Blu started walking from the road.");
+            }
+        });
+    };
+
+    /*
+     * Raycasts are deliberately spread across animation frames.  The old
+     * nested loop evaluated thousands of cells at once and looked like a
+     * frozen loading screen on normal laptops.
+     */
+    const scanSlice=()=>{
+
+        const sliceStart=performance.now();
+
+        while(
+            cellIndex<totalCells &&
+            performance.now()-sliceStart<6
+        ){
+            const row=Math.floor(cellIndex/navCols);
+            const col=cellIndex%navCols;
+            navGrid[row][col]=isWalkableCell(col,row);
+            cellIndex++;
+        }
+
+        if(cellIndex<totalCells){
+            requestAnimationFrame(scanSlice);
+        }
+        else{
+            complete();
+        }
+    };
+
+    requestAnimationFrame(scanSlice);
+
+}
+
+
+/* =========================================================
+   NEAREST WALKABLE CELL
+========================================================= */
+
+function nearestWalkableCell(
+    col,
+    row
+){
+
+    for(
+        let radius=0;
+        radius<30;
+        radius++
+    ){
+
+        for(
+            let y=-radius;
+            y<=radius;
+            y++
+        ){
+
+            for(
+                let x=-radius;
+                x<=radius;
+                x++
+            ){
+
+                const c=col+x;
+
+                const r=row+y;
+
+
+                if(
+                    cellInside(c,r) &&
+                    navGrid[r] &&
+                    navGrid[r][c]
+                ){
+
+                    return {
+                        col:c,
+                        row:r
+                    };
+
+                }
+
+            }
+
+        }
+
+    }
+
+    return null;
+}
+
+
+/* =========================================================
+   A* PATHFINDING
+========================================================= */
+
+function heuristic(
+    a,
+    b
+){
+
+    return Math.abs(
+        a.col-b.col
+    )+
+    Math.abs(
+        a.row-b.row
+    );
+}
+
+
+function findPath(
+    start,
+    goal
+){
+
+    if(
+        !navGrid.length
+    ){
+
+        return [];
+
+    }
+
+
+    const s=
+    worldToCell(
+        start.x,
+        start.z
+    );
+
+
+    const g=
+    worldToCell(
+        goal.x,
+        goal.z
+    );
+
+
+    const startCell=
+    nearestWalkableCell(
+        s.col,
+        s.row
+    );
+
+
+    const goalCell=
+    nearestWalkableCell(
+        g.col,
+        g.row
+    );
+
+
+    if(
+        !startCell ||
+        !goalCell
+    ){
+
+        return [];
+
+    }
+
+
+    const open=[];
+
+    const closed=
+    new Set();
+
+    const cameFrom=
+    new Map();
+
+    const gScore=
+    new Map();
+
+    const fScore=
+    new Map();
+
+
+    function key(c,r){
+        return c+","+r;
+    }
+
+
+    const startKey=
+    key(
+        startCell.col,
+        startCell.row
+    );
+
+
+    gScore.set(
+        startKey,
+        0
+    );
+
+
+    fScore.set(
+        startKey,
+        heuristic(
+            startCell,
+            goalCell
+        )
+    );
+
+
+    open.push(
+        startCell
+    );
+
+
+    const directions=[
+        [1,0],
+        [-1,0],
+        [0,1],
+        [0,-1],
+        [1,1],
+        [-1,1],
+        [1,-1],
+        [-1,-1]
+    ];
+
+
+    while(open.length){
+
+        let best=0;
+
+
+        for(
+            let i=1;
+            i<open.length;
+            i++
+        ){
+
+            if(
+                (fScore.get(
+                    key(
+                        open[i].col,
+                        open[i].row
+                    )
+                ) ?? Infinity)
+                <
+                (fScore.get(
+                    key(
+                        open[best].col,
+                        open[best].row
+                    )
+                ) ?? Infinity)
+            ){
+
+                best=i;
+
+            }
+
+        }
+
+
+        const current=
+        open.splice(
+            best,
+            1
+        )[0];
+
+
+        const currentKey=
+        key(
+            current.col,
+            current.row
+        );
+
+
+        if(
+            current.col===
+            goalCell.col &&
+            current.row===
+            goalCell.row
+        ){
+
+            const result=[];
+
+            let k=currentKey;
+
+            while(k){
+
+                const parts=
+                k.split(",")
+                .map(Number);
+
+                result.unshift(
+                    cellCenter(
+                        parts[0],
+                        parts[1]
+                    )
+                );
+
+                k=
+                cameFrom.get(k);
+
+            }
+
+            return result;
+
+        }
+
+
+        closed.add(
+            currentKey
+        );
+
+
+        for(
+            const d of directions
+        ){
+
+            const nc=
+            current.col+d[0];
+
+            const nr=
+            current.row+d[1];
+
+
+            if(
+                !cellInside(
+                    nc,
+                    nr
+                )
+            ){
+                continue;
+            }
+
+
+            if(
+                !navGrid[nr] ||
+                !navGrid[nr][nc]
+            ){
+                continue;
+            }
+
+
+            /*
+             * For diagonal movement make sure
+             * Blu doesn't cut through corners.
+             */
+
+            if(
+                d[0]!==0 &&
+                d[1]!==0
+            ){
+
+                if(
+                    !navGrid[current.row][nc] ||
+                    !navGrid[nr][current.col]
+                ){
+
+                    continue;
+
+                }
+
+            }
+
+
+            const neighborKey=
+            key(nc,nr);
+
+
+            if(
+                closed.has(
+                    neighborKey
+                )
+            ){
+                continue;
+            }
+
+
+            const movementCost=
+            d[0]!==0 &&
+            d[1]!==0
+            ?1.414
+            :1;
+
+
+            const tentative=
+            (gScore.get(
+                currentKey
+            ) ?? Infinity)+
+            movementCost;
+
+
+            if(
+                tentative <
+                (gScore.get(
+                    neighborKey
+                ) ?? Infinity)
+            ){
+
+                cameFrom.set(
+                    neighborKey,
+                    currentKey
+                );
+
+
+                gScore.set(
+                    neighborKey,
+                    tentative
+                );
+
+
+                fScore.set(
+                    neighborKey,
+                    tentative+
+                    heuristic(
+                        {
+                            col:nc,
+                            row:nr
+                        },
+                        goalCell
+                    )
+                );
+
+
+                if(
+                    !open.some(
+                        item=>
+                        item.col===nc &&
+                        item.row===nr
+                    )
+                ){
+
+                    open.push({
+                        col:nc,
+                        row:nr
+                    });
+
+                }
+
+            }
+
+        }
+
+    }
+
+
+    return [];
+}
+
+
+/* =========================================================
+   SET DESTINATION
+========================================================= */
+
+function setDestination(
+    position,
+    speed=1.5
+){
+
+    if(
+        !bluRoot ||
+        !navigationReady ||
+        !navGrid.length
+    ){
+        console.warn("Blu route unavailable: navigation is not ready.");
+        return false;
+
+    }
+
+    const destinationCell=worldToCell(position.x,position.z);
+    if(!cellInside(destinationCell.col,destinationCell.row) ||
+        !navGrid[destinationCell.row][destinationCell.col]){
+        console.warn("Blu route rejected: destination is not outdoors.");
+        return false;
+    }
+
+
+    const newPath=
+    findPath(
+        bluRoot.position,
+        position
+    );
+
+
+    if(
+        newPath.length<2
+    ){
+        console.warn("Blu route unavailable: no safe path to destination.");
+        return false;
+
+    }
+
+
+    path=
+    newPath;
+
+    pathIndex=1;
+
+    target=
+    path[pathIndex].clone();
+
+    movementSpeed=speed;
+
+    console.log("Blu route accepted:",newPath.length,"points.");
+
+    return true;
+}
+
+
+/* =========================================================
+   RANDOM WALKABLE DESTINATION
+========================================================= */
+
+function randomWalkableDestination(){
+
+    if(
+        !navigationReady ||
+        !navGrid.length
+    ){
+
+        return null;
+
+    }
+
+
+    for(
+        let i=0;
+        i<80;
+        i++
+    ){
+
+        const col=
+        Math.floor(
+            Math.random()*
+            navCols
+        );
+
+        const row=
+        Math.floor(
+            Math.random()*
+            navRows
+        );
+
+
+        if(
+            navGrid[row] &&
+            navGrid[row][col]
+        ){
+
+            const p=
+            cellCenter(
+                col,
+                row
+            );
+
+
+            const distance=
+            p.distanceTo(
+                bluRoot.position
+            );
+
+
+            if(
+                distance>4
+            ){
+                /* A safe-looking cell can still be separated by a wall.
+                   Only offer destinations the A* route can actually reach. */
+                if(findPath(bluRoot.position,p).length>=2){
+                    return p;
+                }
+
+            }
+
+        }
+
+    }
+
+
+    return null;
+}
+
+
+/* =========================================================
+   MOVE BLU
+========================================================= */
+
+function moveBlu(
+    destination,
+    speed,
+    dt
+){
+
+    if(!bluRoot || !target){
+        return true;
+    }
+
+    /* Make sure movement always has a real, finite speed/time step. */
+    speed = Number.isFinite(speed) && speed > 0 ? speed : 1.5;
+    dt = Number.isFinite(dt) && dt > 0 ? dt : 0.016;
+
+    const direction =
+        target.clone().sub(bluRoot.position);
+
+    direction.y = 0;
+
+    const distance = direction.length();
+
+    if(distance < 0.18){
+
+        if(pathIndex < path.length - 1){
+            pathIndex++;
+            target = path[pathIndex].clone();
+            return false;
+        }
+
+        target = null;
+        path = [];
+        pathIndex = 0;
+        playAnimation("idle");
+        return true;
+    }
+
+    direction.normalize();
+
+    const amount = Math.min(speed * dt, distance);
+
+    if(amount <= 0){
+        return false;
+    }
+
+    const nextPosition =
+        bluRoot.position.clone().addScaledVector(direction, amount);
+
+    /*
+     * HARD OUTDOOR BOUNDARY:
+     * Check the whole movement segment, not just its final point.
+     * This prevents Blu from stepping across a house boundary between
+     * two walkable cells or cutting through a corner on a diagonal route.
+     */
+    let safeMove=true;
+    const samples=Math.max(2,Math.ceil(amount/0.22));
+
+    for(let i=1;i<=samples;i++){
+        const t=i/samples;
+        const sx=THREE.MathUtils.lerp(bluRoot.position.x,nextPosition.x,t);
+        const sz=THREE.MathUtils.lerp(bluRoot.position.z,nextPosition.z,t);
+        const c=worldToCell(sx,sz);
+
+        if(!cellInside(c.col,c.row) ||
+           !navGrid[c.row] ||
+           !navGrid[c.row][c.col] ||
+           !isOutdoorPosition(sx,sz) ||
+           hasHorizontalObstacle(sx,sz)){
+            safeMove=false;
+            break;
+        }
+    }
+
+    if(!safeMove){
+
+        target = null;
+        path = [];
+        pathIndex = 0;
+        playAnimation("idle");
+
+        /*
+         * If a route is blocked, try to find another outdoor position
+         * instead of leaving Blu stuck forever.
+         */
+        const outside = nearestOutdoorPosition(bluRoot.position);
+
+        if(outside){
+            setDestination(
+                outside,
+                speed
+            );
+            playAnimation(
+                speed >= 2.5 ? "run" : "walk"
+            );
+        }
+
+        return true;
+    }
+
+    /*
+     * REAL WORLD MOVEMENT:
+     * Change bluRoot.position every frame.  The walk/run animation only
+     * moves the character's limbs; this line moves Blu through the village.
+     */
+    bluRoot.position.x = nextPosition.x;
+    bluRoot.position.z = nextPosition.z;
+
+    /* Face the direction of travel. */
+    const wanted =
+        Math.atan2(
+            direction.x,
+            direction.z
+        );
+
+    let difference =
+        wanted - bluRoot.rotation.y;
+
+    difference =
+        Math.atan2(
+            Math.sin(difference),
+            Math.cos(difference)
+        );
+
+    bluRoot.rotation.y +=
+        difference * Math.min(
+            1,
+            dt * 8
+        );
+
+    return false;
+}
+
+
+/* =========================================================
+   RANDOM ACTIVITIES
+========================================================= */
+
+/* =========================================================
+   WORK SYSTEM
+========================================================= */
+
+function startWork(){
+
+    if(
+        !bluReady ||
+        !worldReady ||
+        actionLocked ||
+        isConversing ||
+        isWorking
+    ){
+
+        return;
+
+    }
+
+    const work=
+    WORK_TYPES[
+        Math.floor(
+            Math.random()*
+            WORK_TYPES.length
+        )
+    ];
+
+    if(!work){
+        return;
+    }
+
+    isWorking=true;
+
+    currentWork=work;
+
+    workTimer=work.duration;
+
+    workPhase=0;
+
+    actionLocked=true;
+
+    target=null;
+
+    path=[];
+
+    pathIndex=0;
+
+    currentActivity="work:"+work.name;
+
+    /*
+     * Walk to a random spot first.
+     */
+
+    const spot=
+    randomWalkableDestination();
+
+    if(spot){
+
+        setDestination(
+            spot,
+            1.3
+        );
+
+        playAnimation(
+            "walk"
+        );
+
+        setEmotion(
+            "happy",
+            `ðŸš¶ Blu is walking to ${work.label}...`
+        );
+
+        /*
+         * After arriving, start working.
+         */
+
+        const walkCheck=
+        setInterval(
+            ()=>{
+
+                if(
+                    !target &&
+                    isWorking
+                ){
+
+                    clearInterval(
+                        walkCheck
+                    );
+
+                    startWorkPhase();
+
+                }
+
+            },
+            300
+        );
+
+    }
+
+    else{
+
+        startWorkPhase();
+
+    }
+
+}
+
+
+function startWorkPhase(){
+
+    if(!currentWork){
+        return;
+    }
+
+    const work=currentWork;
+
+    workPhase++;
+
+    setEmotion(
+        "happy",
+        `${work.emoji} Blu is ${work.label}!`
+    );
+
+    /*
+     * Play work animation (use talk or idle as work substitute).
+     */
+
+    const workAnim=
+    work.anim==="walk"
+    ? findAnimation(["walk","work","bend","dig"])
+    : findAnimation(["work","bend","dig","idle","talk"]);
+
+    if(workAnim && actions[workAnim]){
+
+        playAnimation(
+            workAnim
+        );
+
+    }
+
+    else{
+
+        playAnimation(
+            "idle"
+        );
+
+    }
+
+    /*
+     * Create a subtle bobbing effect to simulate work.
+     */
+
+    const workInterval=
+    setInterval(
+        ()=>{
+
+            if(
+                !isWorking ||
+                !bluRoot
+            ){
+
+                clearInterval(
+                    workInterval
+                );
+
+                return;
+
+            }
+
+            /*
+             * Subtle body movement.
+             */
+
+            const bob=
+            Math.sin(
+                performance.now()*
+                .003
+            )*.03;
+
+            if(bluModel){
+
+                bluModel.position.y=
+                bob;
+
+            }
+
+        },
+        50
+    );
+
+    /*
+     * Work continues in phases.
+     */
+
+    workTimer=currentWork.duration;
+
+}
+
+
+function updateWork(dt){
+
+    if(
+        !isWorking ||
+        !currentWork
+    ){
+
+        return;
+
+    }
+
+    workTimer-=dt;
+
+    if(workTimer<=0){
+
+        finishWork();
+
+    }
+
+}
+
+
+function finishWork(){
+
+    isWorking=false;
+
+    actionLocked=false;
+
+    if(bluModel){
+
+        bluModel.position.y=0;
+
+    }
+
+    const work=currentWork;
+
+    currentWork=null;
+
+    workPhase=0;
+
+    workTimer=0;
+
+    setEmotion(
+        "happy",
+        `ðŸ˜Š Blu finished ${work?.label || "working"}!`
+    );
+
+    playAnimation(
+        "idle"
+    );
+
+    currentActivity="idle";
+
+    activityTimer=
+    THREE.MathUtils.randFloat(
+        3,
+        6
+    );
+
+}
+
+
+/* =========================================================
+   ENHANCED RANDOM ACTIVITIES
+========================================================= */
+
+function startRandomActivity(){
+
+    if(
+        !bluReady ||
+        !worldReady ||
+        actionLocked ||
+        isConversing ||
+        isWorking
+    ){
+
+        return;
+
+    }
+
+    const r=
+    Math.random();
+
+    activityTimer=
+    THREE.MathUtils.randFloat(
+        3,
+        8
+    );
+
+    /*
+     * 25% chance to work
+     */
+
+    if(r<.25){
+
+        startWork();
+
+        return;
+
+    }
+
+    /*
+     * 35% walking
+     */
+
+    else if(r<.60){
+
+        const destination=
+        randomWalkableDestination();
+
+        if(destination){
+
+            currentActivity="walk";
+
+            if(setDestination(
+                destination,
+                THREE.MathUtils.randFloat(
+                    1.1,
+                    1.7
+                )
+            )){
+
+                playAnimation("walk");
+
+                setEmotion("happy","ðŸš¶ Blu is walking around...");
+            }
+
+        }
+
+    }
+
+    /*
+     * 8% running
+     */
+
+    else if(r<.68){
+
+        const destination=
+        randomWalkableDestination();
+
+        if(destination){
+
+            currentActivity="run";
+
+            if(setDestination(
+                destination,
+                THREE.MathUtils.randFloat(
+                    2.8,
+                    4
+                )
+            )){
+
+                playAnimation("run");
+
+                setEmotion("happy","ðŸƒ Blu is running!");
+            }
+
+        }
+
+    }
+
+    /*
+     * 8% laughing
+     */
+
+    else if(r<.76){
+
+        currentActivity="laugh";
+
+        target=null;
+
+        path=[];
+
+        setEmotion(
+            "laugh",
+            "ðŸ˜‚ Blu is laughing!"
+        );
+
+        playAnimation(
+            "laugh"
+        );
+
+    }
+
+    /*
+     * 6% waving
+     */
+
+    else if(r<.82){
+
+        currentActivity="wave";
+
+        target=null;
+
+        path=[];
+
+        setEmotion(
+            "happy",
+            "ðŸ‘‹ Blu is waving!"
+        );
+
+        playAnimation(
+            "wave"
+        );
+
+    }
+
+    /*
+     * 6% looking around
+     */
+
+    else if(r<.88){
+
+        currentActivity="idle";
+
+        target=null;
+
+        path=[];
+
+        setEmotion(
+            "happy",
+            "ðŸ˜Š Blu is looking around..."
+        );
+
+        playAnimation(
+            "idle"
+        );
+
+    }
+
+    /*
+     * 12% jump/dance/fun
+     */
+
+    else{
+
+        currentActivity="fun";
+
+        target=null;
+
+        path=[];
+
+        setEmotion(
+            "happy",
+            "ðŸ˜„ Blu is having fun!"
+        );
+
+        playAnimation(
+            Math.random()<.5
+            ? "jump"
+            : "dance"
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   AUTONOMOUS LIFE
+========================================================= */
+
+function villageLife(dt){
+
+    /*
+     * Update work even when action is locked.
+     */
+
+    if(isWorking){
+
+        updateWork(dt);
+
+    }
+
+    if(
+        !bluReady ||
+        !worldReady ||
+        actionLocked ||
+        isConversing
+    ){
+
+        return;
+
+    }
+
+    if(target){
+
+        moveBlu(
+            target,
+            movementSpeed,
+            dt
+        );
+
+        return;
+
+    }
+
+    activityTimer-=dt;
+
+    if(
+        activityTimer<=0
+    ){
+
+        startRandomActivity();
+
+    }
+
+}
+
+
+/* =========================================================
+   CAMERA (DYNAMIC)
+========================================================= */
+
+let cameraTargetOffset=
+new THREE.Vector3(
+    0,
+    2.1,
+    0
+);
+
+let cameraDesiredOffset=
+new THREE.Vector3(
+    0,
+    4.2,
+    10
+);
+
+let cameraLerpSpeed=.035;
+
+let cinematicMode=false;
+
+let cinematicTimer=0;
+
+function setOccluderOpacity(mesh,opacity){
+    mesh.visible=opacity>.1;
+    const materials=Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for(const material of materials){
+        if(!material) continue;
+        if(material.userData.bluBaseOpacity===undefined){
+            material.userData.bluBaseOpacity=material.opacity ?? 1;
+        }
+        const needsTransparencyCompile=!material.transparent;
+        material.transparent=true;
+        material.depthWrite=opacity>.98;
+        material.opacity=opacity===1 ? material.userData.bluBaseOpacity : opacity;
+        if(needsTransparencyCompile) material.needsUpdate=true;
+    }
+}
+
+function protectBluFromCameraOcclusion(lookPoint){
+    if(!cameraOccluders.length) return;
+
+    /* Restore every wall first.  Only a mesh actually crossing the eye-line
+       gets faded on this frame. */
+    for(const mesh of cameraOccluders){
+        if(mesh.userData.bluOccluding){
+            setOccluderOpacity(mesh,1);
+            mesh.userData.bluOccluding=false;
+        }
+    }
+
+    /* Test three body heights. A fence can hide the chest while leaving the
+       face visible, so a single centre ray is not enough. */
+    const cameraRight=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);
+    const bodyPoints=[];
+    for(const height of [.4,1.3,2.2,2.75]){
+        for(const side of [-.42,0,.42]){
+            const point=bluRoot.position.clone().add(new THREE.Vector3(0,height,0));
+            point.addScaledVector(cameraRight,side);
+            bodyPoints.push(point);
+        }
+    }
+    for(const point of bodyPoints){
+        const direction=point.clone().sub(camera.position);
+        const distance=direction.length();
+        if(distance<.01) continue;
+        cameraOcclusionRaycaster.set(camera.position,direction.normalize());
+        cameraOcclusionRaycaster.near=.1;
+        cameraOcclusionRaycaster.far=Math.max(.1,distance-.18);
+        const hits=cameraOcclusionRaycaster.intersectObjects(cameraOccluders,true);
+        for(const hit of hits){
+            const mesh=hit.object;
+            if(!mesh.isMesh || hit.distance<.2) continue;
+            /* Fully hide the blocking object for this frame. Transparency
+               can still leave a dark silhouette from a dense material. */
+            setOccluderOpacity(mesh,0);
+            mesh.userData.bluOccluding=true;
+        }
+    }
+}
+
+
+function updateCamera(){
+
+    if(!bluRoot){
+        return;
+    }
+
+    /*
+     * Dynamic camera based on activity.
+     */
+
+    if(isConversing){
+
+        /* Video-call framing: face and shoulders fill the view. */
+        cameraDesiredOffset.set(0,3.65,3.4);
+        cameraLerpSpeed=.06;
+
+    }
+
+    else if(currentActivity==="run"){
+
+        /*
+         * Closer, lower, more exciting angle.
+         */
+
+        cameraDesiredOffset.set(
+            0,
+            2.8,
+            7
+        );
+
+        cameraLerpSpeed=.045;
+
+    }
+
+    else if(
+        currentActivity==="dance" ||
+        currentActivity==="fun"
+    ){
+
+        /*
+         * Slightly side angle for dancing.
+         */
+
+        cameraDesiredOffset.set(
+            -2,
+            3.5,
+            8
+        );
+
+        cameraLerpSpeed=.04;
+
+    }
+
+    else if(
+        currentActivity==="laugh"
+    ){
+
+        /*
+         * Front-side angle.
+         */
+
+        cameraDesiredOffset.set(
+            -1.5,
+            3.2,
+            9
+        );
+
+        cameraLerpSpeed=.03;
+
+    }
+
+    else if(isWorking){
+
+        /*
+         * Closer view of work.
+         */
+
+        cameraDesiredOffset.set(
+            0,
+            3.5,
+            7
+        );
+
+        cameraLerpSpeed=.03;
+
+    }
+
+    else if(
+        currentActivity==="talk" ||
+        currentActivity.startsWith("work")
+    ){
+
+        /*
+         * Standard talking distance.
+         */
+
+        cameraDesiredOffset.set(
+            0,
+            4,
+            9
+        );
+
+        cameraLerpSpeed=.03;
+
+    }
+
+    else{
+
+        /*
+         * Default relaxed view.
+         */
+
+        cameraDesiredOffset.set(
+            0,
+            4.2,
+            10
+        );
+
+        cameraLerpSpeed=.035;
+
+    }
+
+
+    const behind=
+    new THREE.Vector3(
+        0,
+        0,
+        1
+    );
+
+    behind.applyQuaternion(
+        bluRoot.quaternion
+    );
+
+    const desired=
+    bluRoot.position
+    .clone();
+
+    /*
+     * Apply offset relative to Blu's facing.
+     */
+
+    const right=
+    new THREE.Vector3(
+        1,
+        0,
+        0
+    );
+
+    right.applyQuaternion(
+        bluRoot.quaternion
+    );
+
+    desired.addScaledVector(
+        behind,
+        cameraDesiredOffset.z
+    );
+
+    desired.addScaledVector(
+        right,
+        cameraDesiredOffset.x
+    );
+
+    desired.y+=
+    cameraDesiredOffset.y;
+
+    /*
+     * Smooth camera movement.
+     */
+
+    camera.position.lerp(
+        desired,
+        cameraLerpSpeed
+    );
+
+    /*
+     * Look at Blu (upper body).
+     */
+
+    const targetHeight=isConversing
+        ? 3.65
+        : 2.1+(currentActivity==="run"?1.8:0);
+
+    cameraTargetOffset.y=
+    THREE.MathUtils.lerp(
+        cameraTargetOffset.y,
+        targetHeight,
+        isConversing ? .08 : .03
+    );
+
+    const look=
+    bluRoot.position
+    .clone();
+
+    look.y+=
+    cameraTargetOffset.y;
+
+    /* Leave a clear video-call portrait area on the left of the viewport;
+       the chat panel stays on the right and never covers Blu's face. */
+    if(isConversing){
+        look.addScaledVector(right,.55);
+    }
+
+    camera.lookAt(
+        look
+    );
+
+    /* A village wall is never allowed to hide Blu from the viewer. */
+    protectBluFromCameraOcclusion(look);
+
+}
+
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+const messages=
+document.getElementById(
+    "msgs"
+);
+
+
+function addMessage(
+    text,
+    type
+){
+
+    const div=
+    document.createElement(
+        "div"
+    );
+
+    div.className=
+    "msg "+type;
+
+    div.textContent=text;
+
+    messages.appendChild(div);
+
+    messages.scrollTop=
+    messages.scrollHeight;
+}
+
+
+/* =========================================================
+   CHAT UNDERSTANDING
+========================================================= */
+
+function understand(
+    text
+){
+
+    const q=
+    text.toLowerCase();
+
+
+    if(
+        q.includes("laugh") ||
+        q.includes("funny")
+    ){
+
+        return {
+            reply:
+            "Haha! That was funny! ðŸ˜‚",
+
+            emotion:"laugh",
+            action:"laugh"
+        };
+
+    }
+
+
+    if(
+        q.includes("cry") ||
+        q.includes("sad") ||
+        q.includes("upset")
+    ){
+
+        return {
+            reply:
+            "I'm feeling a little sad. ðŸ˜¢",
+
+            emotion:"sad",
+            action:"cry"
+        };
+
+    }
+
+
+    if(
+        q.includes("angry") ||
+        q.includes("mad")
+    ){
+
+        return {
+            reply:
+            "Grrr... I'm angry! ðŸ˜ ",
+
+            emotion:"angry",
+            action:"angry"
+        };
+
+    }
+
+
+    if(
+        q.includes("surprise") ||
+        q.includes("wow")
+    ){
+
+        return {
+            reply:
+            "Whoa! ðŸ˜² I wasn't expecting that!",
+
+            emotion:"surprised",
+            action:"surprise"
+        };
+
+    }
+
+
+    if(
+        q.includes("dance")
+    ){
+
+        return {
+            reply:
+            "Let's dance! ðŸ’ƒ",
+
+            emotion:"happy",
+            action:"dance"
+        };
+
+    }
+
+
+    if(
+        q.includes("wave")
+    ){
+
+        return {
+            reply:
+            "Hello! ðŸ‘‹",
+
+            emotion:"happy",
+            action:"wave"
+        };
+
+    }
+
+
+    if(
+        q.includes("follow")
+    ){
+
+        return {
+            reply:
+            "Okay! I'll follow you. ðŸ‘£",
+
+            emotion:"happy",
+            action:"follow"
+        };
+
+    }
+
+
+    if(
+        q.includes("come") ||
+        q.includes("here")
+    ){
+
+        return {
+            reply:
+            "Sure! I'm coming to you. ðŸ˜Š",
+
+            emotion:"happy",
+            action:"come"
+        };
+
+    }
+
+
+    if(
+        q.includes("run")
+    ){
+
+        return {
+            reply:
+            "Let's run! ðŸƒ",
+
+            emotion:"happy",
+            action:"run"
+        };
+
+    }
+
+
+    if(
+        q.includes("walk") ||
+        q.includes("village") ||
+        q.includes("outside")
+    ){
+
+        return {
+            reply:
+            "Come on! I'll show you around the village. ðŸš¶",
+
+            emotion:"happy",
+            action:"walk"
+        };
+
+    }
+
+
+    if(
+        q.includes("stop")
+    ){
+
+        return {
+            reply:
+            "Okay, I'll stop. ðŸ‘",
+
+            emotion:"neutral",
+            action:"stop"
+        };
+
+    }
+
+
+    if(
+        q.includes("hello") ||
+        q.includes("hi") ||
+        q.includes("hey")
+    ){
+
+        return {
+            reply:
+            "Hey! I'm Blu! ðŸ‘‹",
+
+            emotion:"happy",
+            action:"wave"
+        };
+
+    }
+
+
+    if(
+        q.includes("happy") ||
+        q.includes("good") ||
+        q.includes("great") ||
+        q.includes("beautiful") ||
+        q.includes("nice") ||
+        q.includes("love") ||
+        q.includes("wonderful")
+    ){
+
+        const happyReplies=[
+
+            "That makes me really happy too! ðŸ˜„",
+            "I love hearing that! You're so wonderful! ðŸŒŸ",
+            "Yay! What a beautiful day! Let's celebrate! ðŸŽ‰",
+            "That's the best! I'm smiling so big right now! ðŸ˜"
+
+        ];
+
+        return {
+            reply:
+            happyReplies[
+                Math.floor(
+                    Math.random()*
+                    happyReplies.length
+                )
+            ],
+
+            emotion:"happy",
+            action:"happy",
+            intensity:.8
+        };
+
+    }
+
+
+    if(
+        q.includes("joke") ||
+        q.includes("funny story") ||
+        q.includes("tell me something")
+    ){
+
+        const stories=[
+
+            "Okay! Yesterday I saw a chicken chasing a cat through the garden! They ran around the well three times! ðŸ˜‚",
+            "Let me think... Oh! A squirrel stole my apple this morning! I chased it but it was too fast! ðŸ¿ï¸",
+            "Did you know our village well has a fish living in it? I named him Bubbles! He's my friend! ðŸŸ"
+
+        ];
+
+        return {
+            reply:
+            stories[
+                Math.floor(
+                    Math.random()*
+                    stories.length
+                )
+            ],
+
+            emotion:"laugh",
+            action:"talk",
+            intensity:.7
+        };
+
+    }
+
+
+    return {
+
+        reply: (()=>{
+
+            const fallbacks=[
+
+                "Hmm... that's interesting! Tell me more about it! ðŸ˜Š",
+                "Ah, I see what you mean! Life in the village is full of surprises! ðŸŒ¿",
+                "Oh! That reminds me of something... but I can't quite remember! ðŸ˜…",
+                "Really? That's wonderful! I love learning new things from you! ðŸŒŸ",
+                "Haha, I'm not sure I understand, but I love talking with you! ðŸ’¬",
+                "You know what, every day in the village brings something new to think about! ðŸ˜ï¸"
+
+            ];
+
+            return fallbacks[
+                Math.floor(
+                    Math.random()*
+                    fallbacks.length
+                )
+            ];
+
+        })(),
+
+        emotion:"talk",
+        action:"talk",
+        intensity:.5
+
+    };
+
+}
+
+
+/* =========================================================
+   FOLLOW CAMERA
+========================================================= */
+
+let followMode=false;
+
+
+function getFollowTarget(){
+
+    const forward=
+    new THREE.Vector3(
+        0,
+        0,
+        -1
+    );
+
+    forward.applyQuaternion(
+        camera.quaternion
+    );
+
+    forward.y=0;
+
+    forward.normalize();
+
+
+    return camera.position
+        .clone()
+        .addScaledVector(
+            forward,
+            5
+        );
+}
+
+
+/* =========================================================
+   CHAT ACTION
+========================================================= */
+
+function executeAction(
+    action
+){
+
+    actionLocked=true;
+
+    clearTimeout(
+        executeAction.unlockTimer
+    );
+
+
+    executeAction.unlockTimer=
+    setTimeout(
+        ()=>{
+            if(!isConversing && !isWorking){
+                actionLocked=false;
+            }
+        },
+        3500
+    );
+
+
+    target=null;
+
+    path=[];
+
+    pathIndex=0;
+
+
+    if(action==="come"){
+
+        followMode=false;
+
+        const destination=
+        getFollowTarget();
+
+
+        if(
+            setDestination(
+                destination,
+                2
+            )
+        ){
+
+            playAnimation(
+                "walk"
+            );
+
+        }
+
+    }
+
+
+    else if(action==="follow"){
+
+        followMode=true;
+
+        movementSpeed=1.7;
+
+        playAnimation(
+            "walk"
+        );
+
+    }
+
+
+    else if(action==="walk"){
+
+        followMode=false;
+
+        const destination=
+        randomWalkableDestination();
+
+
+        if(destination){
+
+            setDestination(
+                destination,
+                1.5
+            );
+
+            playAnimation(
+                "walk"
+            );
+
+        }
+
+    }
+
+
+    else if(action==="run"){
+
+        followMode=false;
+
+        const destination=
+        randomWalkableDestination();
+
+
+        if(destination){
+
+            setDestination(
+                destination,
+                3.5
+            );
+
+            playAnimation(
+                "run"
+            );
+
+        }
+
+    }
+
+
+    else if(action==="stop"){
+
+        followMode=false;
+
+        target=null;
+
+        path=[];
+
+        playAnimation(
+            "idle"
+        );
+
+    }
+
+
+    else if(action==="laugh"){
+
+        followMode=false;
+
+        setEmotion(
+            "laugh",
+            "ðŸ˜‚ Blu is laughing!"
+        );
+
+        playAnimation(
+            "laugh"
+        );
+
+    }
+
+
+    else if(action==="cry"){
+
+        followMode=false;
+
+        setEmotion(
+            "sad",
+            "ðŸ˜¢ Blu is crying..."
+        );
+
+        playAnimation(
+            "cry"
+        );
+
+    }
+
+
+    else if(action==="angry"){
+
+        followMode=false;
+
+        setEmotion(
+            "angry",
+            "ðŸ˜  Blu is angry!"
+        );
+
+        playAnimation(
+            "angry"
+        );
+
+    }
+
+
+    else if(action==="surprise"){
+
+        followMode=false;
+
+        setEmotion(
+            "surprised",
+            "ðŸ˜² Blu is surprised!"
+        );
+
+        playAnimation(
+            "surprised"
+        );
+
+    }
+
+
+    else if(action==="wave"){
+
+        followMode=false;
+
+        setEmotion(
+            "happy",
+            "ðŸ‘‹ Blu is waving!"
+        );
+
+        playAnimation(
+            "wave"
+        );
+
+    }
+
+
+    else if(action==="dance"){
+
+        followMode=false;
+
+        setEmotion(
+            "happy",
+            "ðŸ’ƒ Blu is dancing!"
+        );
+
+        playAnimation(
+            "dance"
+        );
+
+    }
+
+
+    else if(action==="happy"){
+
+        setEmotion(
+            "happy",
+            "ðŸ˜„ Blu is really happy!"
+        );
+
+    }
+
+
+    else{
+
+        setEmotion(
+            "talk",
+            "ðŸ—£ï¸ Blu is talking to you."
+        );
+
+        playAnimation(
+            "talk"
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   FOLLOW MODE
+========================================================= */
+
+let followTimer=0;
+
+
+function updateFollow(
+    dt
+){
+
+    if(
+        !followMode ||
+        !bluRoot ||
+        actionLocked
+    ){
+
+        return;
+
+    }
+
+
+    followTimer-=dt;
+
+
+    if(
+        followTimer>0 &&
+        target
+    ){
+
+        return;
+
+    }
+
+
+    followTimer=.7;
+
+
+    const destination=
+    getFollowTarget();
+
+
+    const distance=
+    destination.distanceTo(
+        bluRoot.position
+    );
+
+
+    if(distance>2){
+
+        setDestination(
+            destination,
+            movementSpeed
+        );
+
+        playAnimation(
+            "walk"
+        );
+
+    }
+
+    else{
+
+        target=null;
+
+        path=[];
+
+        playAnimation(
+            "idle"
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   SEND
+========================================================= */
+
+/* =========================================================
+   CHAT TYPING INDICATOR
+========================================================= */
+
+function showTypingIndicator(
+    show
+){
+
+    const status=
+    document.getElementById(
+        "status"
+    );
+
+    if(show){
+
+        status.textContent=
+        "ðŸ’¬ Blu is typing...";
+
+    }
+
+    else{
+
+        status.textContent=
+        "Blu ready âœ“";
+
+    }
+
+}
+
+
+/* =========================================================
+   TYPE BLU'S MESSAGE
+========================================================= */
+
+function estimateSpeechDuration(text){
+
+    const words=text.trim().split(/\s+/).filter(Boolean).length;
+
+    /* A calm video-call pace: about 145 words per minute. */
+    return Math.max(1200,Math.round((words/2.42)*1000+500));
+}
+
+
+function speakBluText(text,sequence){
+
+    if(
+        !voiceEnabled ||
+        !userHasInteracted ||
+        !("speechSynthesis" in window) ||
+        !("SpeechSynthesisUtterance" in window)
+    ){
+        return Promise.resolve();
+    }
+
+    return new Promise(resolve=>{
+
+        let finished=false;
+
+        const finish=()=>{
+
+            if(finished || sequence!==speechSequence){
+                return;
+            }
+
+            finished=true;
+            speechVoicePlaying=false;
+            resolve();
+        };
+
+        const utterance=
+        new SpeechSynthesisUtterance(
+            text.replace(/[\u{1F300}-\u{1FAFF}]/gu,"")
+        );
+
+        utterance.rate=.94;
+        utterance.pitch=
+        targetEmotionType==="happy" ||
+        targetEmotionType==="laugh"
+        ? 1.08
+        : targetEmotionType==="sad"
+        ? .90
+        : 1;
+
+        const voices=window.speechSynthesis.getVoices();
+        const preferredLanguage=(navigator.language||"en").toLowerCase();
+        const voice=voices.find(v=>v.lang.toLowerCase()===preferredLanguage) ||
+            voices.find(v=>v.lang.toLowerCase().startsWith("en")) ||
+            voices.find(v=>v.default);
+
+        if(voice){
+            utterance.voice=voice;
+        }
+
+        utterance.onstart=()=>{
+            if(sequence===speechSequence){
+                speechVoicePlaying=true;
+            }
+        };
+
+        utterance.onboundary=event=>{
+            if(
+                sequence===speechSequence &&
+                Number.isFinite(event.charIndex)
+            ){
+                speechCharIndex=event.charIndex;
+            }
+        };
+
+        utterance.onend=finish;
+        utterance.onerror=finish;
+
+        /* Some browsers do not fire an event when no system voice is ready. */
+        const timeout=window.setTimeout(
+            finish,
+            speechEstimatedMs+2500
+        );
+
+        const finishWithTimeout=()=>{
+            window.clearTimeout(timeout);
+            finish();
+        };
+
+        utterance.onend=finishWithTimeout;
+        utterance.onerror=finishWithTimeout;
+
+        try{
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+        }
+        catch(error){
+            console.warn("Blu voice could not start:",error);
+            finishWithTimeout();
+        }
+    });
+}
+
+
+function finishBluSpeech(sequence,callback){
+
+    if(sequence!==speechSequence){
+        return;
+    }
+
+    window.__bluSpeakActive=false;
+    isConversing=false;
+    speechVoicePlaying=false;
+    activeSpeechText="";
+    activeTypingCancel=null;
+    showTypingIndicator(false);
+
+    if(!isWorking){
+        actionLocked=false;
+    }
+
+    window.setTimeout(()=>{
+        if(sequence!==speechSequence || isConversing){
+            return;
+        }
+
+        if(target){
+            playAnimation(movementSpeed>=2.5?"run":"walk");
+        }
+        else if(!isWorking){
+            playAnimation("idle");
+        }
+    },350);
+
+    if(callback){
+        callback();
+    }
+}
+
+
+function typeBluMessage(
+    text,
+    callback
+){
+
+    if(activeTypingCancel){
+        activeTypingCancel();
+    }
+
+    const sequence=++speechSequence;
+
+    isConversing=true;
+    actionLocked=true;
+    window.__bluSpeakActive=true;
+    activeSpeechText=text;
+    speechCharIndex=0;
+    speechStartedAt=performance.now();
+    speechEstimatedMs=estimateSpeechDuration(text);
+    speechVoicePlaying=false;
+
+    document.getElementById("status").textContent=
+    voiceEnabled && userHasInteracted
+    ? "Blu is speaking..."
+    : "Blu is replying...";
+
+    /*
+     * A talking pose is deliberately kept small so the attention stays on
+     * the face, just as it would during a video call.
+     */
+
+    document.getElementById("emotion").textContent=
+    "Blu is speaking...";
+
+    playAnimation(
+        "talk"
+    );
+
+    /*
+     * Type the message character by character.
+     */
+
+    const msgDiv=
+    document.createElement(
+        "div"
+    );
+
+    msgDiv.className=
+    "msg blu";
+
+    messages.appendChild(
+        msgDiv
+    );
+
+    let i=0;
+
+    let typingDone=false;
+    let voiceDone=false;
+
+    const speedMs=Math.max(
+        24,
+        Math.min(90,Math.round(speechEstimatedMs/Math.max(1,text.length)))
+    );
+
+    let typeInterval=null;
+
+    const completeTyping=()=>{
+
+        if(typingDone || sequence!==speechSequence){
+            return;
+        }
+
+        typingDone=true;
+        isTyping=false;
+
+        if(typeInterval){
+            clearInterval(typeInterval);
+        }
+
+        msgDiv.textContent=text;
+        messages.scrollTop=messages.scrollHeight;
+
+        if(voiceDone){
+            finishBluSpeech(sequence,callback);
+        }
+    };
+
+    activeTypingCancel=()=>{
+        if(typeInterval){
+            clearInterval(typeInterval);
+        }
+        typingDone=true;
+    };
+
+    isTyping=true;
+
+    typeInterval=
+    setInterval(
+        ()=>{
+
+            msgDiv.textContent+=text.charAt(i);
+
+            i++;
+
+            messages.scrollTop=
+            messages.scrollHeight;
+
+            if(i>=text.length){
+                completeTyping();
+
+            }
+
+        },
+        speedMs
+    );
+
+    const canUseVoice=
+    voiceEnabled &&
+    userHasInteracted &&
+    ("speechSynthesis" in window) &&
+    ("SpeechSynthesisUtterance" in window);
+
+    if(!canUseVoice){
+        /* Keep the visual reply paced even if a device has no usable voice. */
+        voiceDone=true;
+        return;
+    }
+
+    speakBluText(text,sequence)
+    .then(()=>{
+
+        if(sequence!==speechSequence){
+            return;
+        }
+
+        voiceDone=true;
+
+        /* Keep visual text and voice together if the voice ends first. */
+        if(!typingDone){
+            completeTyping();
+        }
+        else{
+            finishBluSpeech(sequence,callback);
+        }
+    });
+
+}
+
+
+/* =========================================================
+   SEND (AI-POWERED)
+========================================================= */
+
+function send(){
+
+    /* Speech synthesis is allowed after a real user interaction. */
+    userHasInteracted=true;
+
+    const input=
+    document.getElementById(
+        "input"
+    );
+
+    const text=
+    input.value.trim();
+
+    if(!text){
+        return;
+    }
+
+    input.value="";
+
+    /*
+     * Show user message.
+     */
+
+    addMessage(
+        text,
+        "user"
+    );
+
+    /*
+     * Try AI first.
+     */
+
+    sendToAI(text);
+
+}
+
+
+let conversationHistory=[];
+
+let aiRetryCount=0;
+
+
+async function sendToAI(
+    text
+){
+
+    let result=null;
+
+    if(aiAvailable){
+
+        showTypingIndicator(true);
+
+        document.getElementById(
+            "status"
+        ).textContent=
+        "ðŸ§  Blu is thinking...";
+
+        try{
+
+            const aiResponse=
+            await callOllama(
+                text,
+                conversationHistory.slice(-12)
+            );
+
+            if(aiResponse){
+
+                const allowedEmotions=["neutral","talk","happy","sad","angry","surprised","laugh"];
+                const allowedActions=["idle","talk","happy","laugh","wave","dance","sad","cry","angry","surprise","surprised","walk","run","jump","come","follow","stop"];
+
+                result={
+                    reply:String(aiResponse.reply||"Okay!"),
+                    emotion:allowedEmotions.includes(String(aiResponse.emotion).toLowerCase())
+                            ? String(aiResponse.emotion).toLowerCase()
+                            : "talk",
+                    action:allowedActions.includes(String(aiResponse.action).toLowerCase())
+                           ? String(aiResponse.action).toLowerCase()
+                           : "talk",
+                    intensity:Number.isFinite(Number(aiResponse.intensity))
+                              ? Math.max(.3,Math.min(1,Number(aiResponse.intensity)))
+                              : .6
+                };
+
+            }
+
+        }
+
+        catch(e){
+
+            console.log(
+                "AI failed, using fallback"
+            );
+
+        }
+
+    }
+
+    /*
+     * Fallback to keyword system.
+     */
+
+    if(!result){
+
+        result=
+        understand(
+            text
+        );
+
+        result.intensity=.6;
+
+    }
+
+    /*
+     * Keep a short conversation history for Ollama.
+     */
+
+    conversationHistory.push(
+        {role:"user",content:text},
+        {role:"assistant",content:result.reply}
+    );
+
+    if(conversationHistory.length>12){
+        conversationHistory=conversationHistory.slice(-12);
+    }
+
+    /*
+     * Execute physical and emotional reaction.
+     */
+
+    executeAction(
+        result.action
+    );
+
+    /*
+     * Set advanced emotion with intensity.
+     */
+
+    const emotionText=
+    result.emotion==="sad"
+    ? "ðŸ˜¢ Blu feels sad..."
+    : result.emotion==="angry"
+    ? "ðŸ˜  Blu is getting angry..."
+    : result.emotion==="laugh"
+    ? "ðŸ˜‚ Blu is laughing..."
+    : result.emotion==="surprised"
+    ? "ðŸ˜² Blu is surprised..."
+    : result.emotion==="happy"
+    ? "ðŸ˜Š Blu is happy..."
+    : "ðŸ—£ï¸ Blu is reacting...";
+
+    setAdvancedEmotion(
+        result.emotion,
+        result.intensity,
+        emotionText
+    );
+
+    /*
+     * Type Blu's response with talking animation.
+     */
+
+    const reactionLeadMs=
+    result.action==="laugh"
+    ? 850
+    : ["wave","dance","jump","surprise","cry","angry"].includes(result.action)
+    ? 500
+    : 180;
+
+    setTimeout(
+        ()=>{
+
+            typeBluMessage(
+                result.reply
+            );
+
+        },
+        reactionLeadMs
+    );
+
+}
+
+
+document.getElementById("voice").onclick=()=>{
+
+    voiceEnabled=!voiceEnabled;
+
+    const voiceButton=document.getElementById("voice");
+    voiceButton.textContent=voiceEnabled?"Voice on":"Voice off";
+    voiceButton.setAttribute("aria-pressed",String(voiceEnabled));
+
+    if(!voiceEnabled && "speechSynthesis" in window){
+        window.speechSynthesis.cancel();
+    }
+};
+
+
+document.getElementById(
+    "send"
+).onclick=send;
+
+
+document.getElementById(
+    "input"
+).addEventListener(
+    "keydown",
+    event=>{
+
+        if(
+            event.key==="Enter"
+        ){
+
+            send();
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   LOOP
+========================================================= */
+
+const clock=
+new THREE.Clock();
+
+
+function animate(){
+
+    requestAnimationFrame(
+        animate
+    );
+
+
+    const dt=
+    Math.min(
+        clock.getDelta(),
+        .05
+    );
+
+
+    if(mixer){
+
+        mixer.update(dt);
+
+    }
+
+    /*
+     * Auto-blink + eye gaze + mouth.
+     */
+
+    updateFacial(dt);
+
+
+    /*
+     * Smooth emotion transitions.
+     */
+
+    updateEmotionTransition(dt);
+
+
+    /*
+     * Procedural body animation
+     * (fake movement when no real animations exist).
+     */
+
+    updateProceduralAnimation(dt);
+
+
+    villageLife(dt);
+
+    updateFollow(dt);
+
+    updateCamera();
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+
+}
+
+
+animate();
+
+
+/* =========================================================
+   RESIZE
+========================================================= */
+
+window.addEventListener(
+    "resize",
+    ()=>{
+
+        camera.aspect=
+        innerWidth/
+        innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            innerWidth,
+            innerHeight
+        );
+
+    }
+);
+
+</script>
+
+</body>
+</html>

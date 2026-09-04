@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Blu — Mixamo Rig Setup Guide</title>
+<style>
+*{box-sizing:border-box}
+body{
+    margin:20px auto;
+    max-width:800px;
+    font-family:Arial,Segoe UI,sans-serif;
+    background:#0d1a2b;
+    color:#e0ecff;
+    line-height:1.6;
+    padding:20px;
+}
+h1{color:#8bb5ff;border-bottom:2px solid #2a4a7a;padding-bottom:10px}
+h2{color:#6a9fd8;margin-top:30px}
+h3{color:#5090c8}
+code{
+    background:#1a2d44;
+    padding:2px 7px;
+    border-radius:4px;
+    color:#bcd7ff;
+    font-size:14px;
+}
+.step{
+    background:#12243b;
+    border-radius:12px;
+    padding:16px 20px;
+    margin:12px 0;
+    border-left:4px solid #3a7ac0;
+}
+.step.done{border-left-color:#4caf50}
+.step.warn{border-left-color:#ff9800}
+.tip{
+    background:#1a3048;
+    border-radius:8px;
+    padding:12px;
+    margin:10px 0;
+    font-size:13px;
+    color:#aec5e3;
+}
+img{max-width:100%;border-radius:8px;margin:10px 0}
+button{
+    background:#347bd3;
+    border:0;
+    color:white;
+    padding:12px 24px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:16px;
+    font-weight:bold;
+    margin:5px;
+}
+button:hover{background:#4690e6}
+button.secondary{background:#2a4a6a}
+.check{color:#4caf50;font-weight:bold}
+.cross{color:#ff6b6b}
+</style>
+</head>
+<body>
+
+<h1>🔧 Rig Blu with Real Animations</h1>
+
+<p>
+Your <code>blu.glb</code> is a high-quality model (31.9 MB) but has
+<strong class="cross">no skeleton or animations</strong>.
+This guide shows you how to add them for FREE using Mixamo.
+</p>
+
+<div class="step warn">
+<h3>📊 Current Status</h3>
+<p>
+✅ <strong>Procedural animation</strong> — Blu bobs, sways, tilts, and shakes
+to simulate emotions. Works immediately without model changes.<br>
+❌ No real walk/run/dance/laugh/cry animations on the 3D body.
+</p>
+</div>
+
+<h2>🎯 Option 1: Auto-Rig with Mixamo (Free, 10 min)</h2>
+
+<div class="step">
+<h3>Step 1 — Export your model as FBX</h3>
+<p>
+Open your model in <strong>Blender</strong> (free) or any 3D software.
+</p>
+<ul>
+<li>File → Export → FBX (.fbx)</li>
+<li>Settings: <code>Version: FBX 7.4 binary</code></li>
+<li>Check: <code>Include: Selected Objects</code></li>
+<li>Path mode: <code>Copy</code></li>
+<li>Save as <code>blu.fbx</code></li>
+</ul>
+<div class="tip">
+💡 If you don't have Blender, download it from
+<a href="https://blender.org" style="color:#8bb5ff" target="_blank">blender.org</a> (free).
+</div>
+</div>
+
+<div class="step">
+<h3>Step 2 — Upload to Mixamo</h3>
+<p>
+Go to <a href="https://www.mixamo.com" style="color:#8bb5ff" target="_blank">mixamo.com</a>
+and sign in with an Adobe account (free tier available).
+</p>
+<ul>
+<li>Click <strong>"Upload Character"</strong></li>
+<li>Select your <code>blu.fbx</code></li>
+<li>Wait for auto-rigging (usually 10-30 seconds)</li>
+<li>Place markers on joints if prompted → click <strong>"Next"</strong></li>
+<li>Click <strong>"Auto-Rig"</strong></li>
+</ul>
+</div>
+
+<div class="step">
+<h3>Step 3 — Download Animations</h3>
+<p>Mixamo has <strong>100+ free animations</strong>. Download these for Blu:</p>
+
+<table style="width:100%;border-collapse:collapse;margin:10px 0">
+<tr style="background:#1a2d44">
+<th style="padding:8px;text-align:left">Animation</th>
+<th style="padding:8px;text-align:left">Mixamo Name</th>
+<th style="padding:8px;text-align:left">For</th>
+</tr>
+<tr style="border-bottom:1px solid #2a4a7a">
+<td style="padding:8px">🧍 Idle</td><td style="padding:8px"><code>Idle</code> / <code>Breathing Idle</code></td><td style="padding:8px">Standing around</td>
+</tr>
+<tr style="border-bottom:1px solid #2a4a7a">
+<td style="padding:8px">🚶 Walk</td><td style="padding:8px"><code>Walking</code> / <code>Walk</code></td><td style="padding:8px">Moving around village</td>
+</tr>
+<tr style="border-bottom:1px solid #2a4a7a">
+<td style="padding:8px">🏃 Run</td><td style="padding:8px"><code>Running</code> / <code>Run</code></td><td style="padding:8px">Sprinting</td>
+</tr>
+<tr style="border-bottom:1px solid #2a4a7a">
+<td style="padding:8px">😂 Laugh</td><td style="padding:8px"><code>Laughing</code></td><td style="padding:8px">Happy reaction</td>
+</tr>
+<tr style="border-bottom:1px solid #2a4a7a">
+<td style="padding:8px">😢 Sad / Cry</td><td style="padding:8px"><code>Crying</code> / <code>Sigh</code></td><td style="padding:8px">Sad reaction</td>
+</tr>
+<tr style="border-bottom:1px solid #2a4a7a">
+<td style="padding:8px">😠 Angry</td><td style="padding:8px"><code>Angry Gesture</code> / <code>Shouting</code></td><td style="padding:8px">Angry reaction</td>
+</tr>
+<tr style="border-bottom:1px solid #2a4a7a">
+<td style="padding:8px">💃 Dance</td><td style="padding:8px"><code>Dancing</code> / <code>Hip Hop</code></td><td style="padding:8px">Celebration</td>
+</tr>
+<tr style="border-bottom:1px solid #2a4a7a">
+<td style="padding:8px">👋 Wave</td><td style="padding:8px"><code>Waving</code></td><td style="padding:8px">Greeting</td>
+</tr>
+<tr>
+<td style="padding:8px">🗣️ Talk</td><td style="padding:8px"><code>Talking</code> / <code>Gesturing</code></td><td style="padding:8px">Chatting with you</td>
+</tr>
+</table>
+
+<div class="tip">
+💡 <strong>Pro tip:</strong> For each animation, set:
+<ul>
+<li><code>Format: FBX Binary (.fbx)</code></li>
+<li>No keyframe reduction</li>
+<li>Download as <code>anim_idle.fbx</code>, <code>anim_walk.fbx</code>, etc.</li>
+</ul>
+</div>
+</div>
+
+<h2>🔄 Option 2: Use Pre-Rigged Model</h2>
+
+<div class="step">
+<h3>Find an animated GLB</h3>
+<p>
+If auto-rigging is too much work, find a pre-rigged human GLB:
+</p>
+<ul>
+<li><strong>Ready Player Me</strong> — <a href="https://readyplayer.me" style="color:#8bb5ff" target="_blank">readyplayer.me</a> (free avatar with animations)</li>
+<li><strong>Sketchfab</strong> — filter by "Animated" and "Rigged"</li>
+<li><strong>Mixamo</strong> — download their built-in character models (already rigged)</li>
+</ul>
+<p>
+Replace <code>assets/blu.glb</code> with the new model and reload!
+</p>
+</div>
+
+<h2>🎬 Option 3: Keep Procedural (It's Already Working!)</h2>
+
+<div class="step done">
+<h3>The current system works fine</h3>
+<p>
+Blu already:
+</p>
+<ul>
+<li>✅ Bobs up and down when walking/running</li>
+<li>✅ Sways when dancing</li>
+<li>✅ Shakes when laughing or angry</li>
+<li>✅ Tilts forward when sad, leans back when surprised</li>
+<li>✅ Jumps up when happy</li>
+<li>✅ Changes color when angry (red glow) or sad (blue glow)</li>
+<li>✅ Does village work autonomously</li>
+</ul>
+<p>
+<strong>No model changes needed.</strong> The procedural animations
+give Blu a living, breathing feel even without real skeletons.
+</p>
+</div>
+
+<h2>📁 Combining Animations with GLB</h2>
+
+<div class="step">
+<h3>Step 1 — Import into Blender</h3>
+<p>
+Open Blender. Import your original <code>blu.fbx</code> or <code>blu.glb</code>.
+</p>
+</div>
+
+<div class="step">
+<h3>Step 2 — Add Mixamo Animations</h3>
+<p>
+In Blender:
+</p>
+<ul>
+<li>Import each <code>anim_*.fbx</code> from Mixamo</li>
+<li>They auto-attach to the skeleton if the names match</li>
+<li>Rename animations: <code>Idle</code>, <code>Walk</code>, <code>Run</code>, etc.</li>
+</ul>
+</div>
+
+<div class="step">
+<h3>Step 3 — Export as GLB</h3>
+<p>
+File → Export → glTF 2.0 (.glb)
+</p>
+<ul>
+<li>☑ Include: <code>Selected Objects</code></li>
+<li>☑ <code>Include Animations</code></li>
+<li>☑ <code>Use Blender (Bake) Skin</code></li>
+<li>Save as <code>blu.glb</code></li>
+<li>Replace <code>assets/blu.glb</code></li>
+</ul>
+<div class="tip">
+💡 The code auto-detects animations! If animations are found,
+real animation mixer takes over. If not, procedural fallback runs.
+</div>
+</div>
+
+<h2>🧪 Testing Your Rigged Model</h2>
+
+<p>
+After replacing <code>blu.glb</code>, reload the page.
+The feature badges in the bottom-left will show:
+</p>
+<ul>
+<li><strong>🎬 Real Animations</strong> — if GLB has animations</li>
+<li><strong>🛠 Procedural</strong> — if no animations found (fallback is automatic)</li>
+</ul>
+
+<p style="margin-top:30px;text-align:center;color:#6a9fd8">
+🌟 Enjoy your village with Blu! 🌟
+</p>
+
+</body>
+</html>
